@@ -5,6 +5,7 @@ export class CredentialDTO {
   siteUsername: string;
   sitePassword: string;
   isSitePasswordVerified: string;
-  sitePort: string;
+  sitePort: number;
   siteSShVersion: string;
+  lastDateChange?: Date;
 }

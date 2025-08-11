@@ -17,4 +17,15 @@ ADD COLUMN siteUsernameEntered VARCHAR(50),
 ADD COLUMN sitePasswordEntered VARCHAR(50),
 ADD COLUMN sitePortEntered INT;
 
+ALTER TABLE credentials_sites
+ADD COLUMN lastDateChange TIMESTAMP;
+
+CREATE TABLE credentials_sites_historic(
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    connectionErrorDate TIMESTAMP,
+    errorDescription TEXT,
+    errorResolutionDate TIMESTAMP,
+    errorStatus VARCHAR(50) 
+);
+
 

@@ -35,4 +35,10 @@ export class Credentials {
 
   @Column('int')
   sitePortEntered: number;
+
+  @Column({
+    type: 'datetime',
+    precision: 6,
+  })
+  lastDateChange: Date;
 }

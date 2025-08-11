@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: monitoring_4g_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoring_4g}
+      MYSQL_USER: ${MYSQL_USER:-monitoring_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-monitoring_password}
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./mysql/init:/docker-entrypoint-initdb.d
+    networks:
+      - monitoring_network
+    command: --default-authentication-plugin=mysql_native_password
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  monitoring_network:
+    driver: bridge 
