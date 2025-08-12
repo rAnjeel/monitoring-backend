@@ -40,8 +40,8 @@ export class CredentialsController {
     return credential;
   }
 
-@Post('check')
-async checkCredential(@Body() dto: CredentialDTO, @Req() req: Request) {
+  @Post('check')
+  async checkCredential(@Body() dto: CredentialDTO, @Req() req: Request) {
     const ip = this.getClientIp(req);
     
     // Appel à la nouvelle méthode avec les paramètres du DTO
@@ -64,7 +64,7 @@ async checkCredential(@Body() dto: CredentialDTO, @Req() req: Request) {
         },
         error: verification.error || undefined
     };
-}
+  }
 
   private getClientIp(req: Request): string {
       // 1. Vérification typée de clientIp (si tu as étendu l'interface Request)

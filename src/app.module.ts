@@ -12,6 +12,7 @@ import { HistoricCredentials } from './historic-credentials/historic-credentials
 import { HistoricCredentialsController } from './historic-credentials/historic-credentials.controller';
 import { HistoricCredentialsService } from './historic-credentials/historic-credentials.service'
 import { IpMiddleware } from './middleware/IpMiddleware';
+import { LoginGateway } from './login/login.gateway';
 
 @Module({
   imports: [
@@ -25,13 +26,13 @@ import { IpMiddleware } from './middleware/IpMiddleware';
       autoLoadEntities: true,
       synchronize: true,
       extra: {
-        timezone: '+03:00' // Force GMT+3 pour toutes les requêtes
+        timezone: '+03:00' 
       },
     }),
     TypeOrmModule.forFeature([Credentials]),
     TypeOrmModule.forFeature([HistoricCredentials])
   ],
   controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController],
-  providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware],
+  providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, LoginGateway],
 })
 export class AppModule {}

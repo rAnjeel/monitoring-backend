@@ -1,6 +1,5 @@
 /* eslint-disable prettier/prettier */
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
-import { dayjsTZ, GMT3_TZ } from '../utils/dayjs';
 
 @Entity({ name: 'credentials_sites' }) // Le nom de la table dans la base reste 'credentials_sites'
 export class Credentials {
