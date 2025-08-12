@@ -1,5 +1,6 @@
 /* eslint-disable prettier/prettier */
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
+import { dayjsTZ, GMT3_TZ } from '../utils/dayjs';
 
 @Entity({ name: 'credentials_sites' }) // Le nom de la table dans la base reste 'credentials_sites'
 export class Credentials {
@@ -37,8 +38,8 @@ export class Credentials {
   sitePortEntered: number;
 
   @Column({
-    type: 'datetime',
-    precision: 6,
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   lastDateChange: Date;
 }
