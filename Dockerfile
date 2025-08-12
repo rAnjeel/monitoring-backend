@@ -1,29 +1,17 @@
-# --- Build stage ---
-FROM node:20-alpine AS build
+FROM node:20-alpine
+
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci
-
-COPY tsconfig*.json ./
-COPY nest-cli.json ./
-COPY src ./src
-
-RUN npm run build
-
-# --- Production stage ---
-FROM node:20-alpine AS production
-WORKDIR /app
-
-ENV NODE_ENV=production
+# Installer PM2 globalement
+RUN npm install -g pm2
 
 COPY package*.json ./
-RUN npm ci --omit=dev
+RUN npm install
 
-COPY --from=build /app/dist ./dist
+COPY . .
 
+# Exposer port
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
-
-
+# Commande par défaut (dev : pm2 watch, prod : pm2 sans watch)
+CMD ["sh", "-c", "if [ \"$NODE_ENV\" = 'development' ]; then pm2-runtime ecosystem.config.js --watch; else pm2-runtime ecosystem.config.js; fi"]

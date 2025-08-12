@@ -55,6 +55,7 @@ async checkCredential(@Body() dto: CredentialDTO, @Req() req: Request) {
     return {
         userIp: ip,
         status: verification.match ? 'success' : 'failed',
+        siteUsername: dto.siteUsername,
         details: {
             usernameMatch: verification.details.usernameMatch,
             passwordMatch: verification.details.passwordMatch,
