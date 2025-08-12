@@ -4,6 +4,7 @@ module.exports = {
       name: 'nest-backend',
       script: 'dist/main.js',  // En prod, on démarre le build
       watch: process.env.NODE_ENV === 'development',
+      autorestart: true,
       ignore_watch: ['node_modules', 'uploads'],
       env: {
         NODE_ENV: 'development'
