@@ -24,6 +24,9 @@ import { IpMiddleware } from './middleware/IpMiddleware';
       database: process.env.MYSQL_DATABASE || 'monitoring_4g',
       autoLoadEntities: true,
       synchronize: true,
+      extra: {
+        timezone: '+03:00' // Force GMT+3 pour toutes les requêtes
+      },
     }),
     TypeOrmModule.forFeature([Credentials]),
     TypeOrmModule.forFeature([HistoricCredentials])
