@@ -37,8 +37,8 @@ export class Credentials {
   sitePortEntered: number;
 
   @Column({
-    type: 'datetime',
-    precision: 6,
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
   })
   lastDateChange: Date;
 }
