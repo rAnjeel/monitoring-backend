@@ -12,7 +12,8 @@ import { HistoricCredentials } from './historic-credentials/historic-credentials
 import { HistoricCredentialsController } from './historic-credentials/historic-credentials.controller';
 import { HistoricCredentialsService } from './historic-credentials/historic-credentials.service'
 import { IpMiddleware } from './middleware/IpMiddleware';
-import { LoginGateway } from './login-socket/login.gateway';
+import { LoginGateway } from './login/login.gateway';
+import { LoginController } from './login/login.controller';
 
 @Module({
   imports: [
@@ -32,7 +33,7 @@ import { LoginGateway } from './login-socket/login.gateway';
     TypeOrmModule.forFeature([Credentials]),
     TypeOrmModule.forFeature([HistoricCredentials])
   ],
-  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController],
+  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, LoginController],
   providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, LoginGateway],
 })
 export class AppModule {}

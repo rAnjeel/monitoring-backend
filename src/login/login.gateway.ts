@@ -87,4 +87,8 @@ export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
     }
     return client.handshake.address;
   }
+
+   emitFailedLogin(data: any) {
+    this.server.emit('failed_login', data);
+  }
 }
