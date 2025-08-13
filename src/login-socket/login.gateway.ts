@@ -13,7 +13,7 @@ import { CredentialsService } from '../credentials/credentials.service';
 import { CredentialDTO } from '../credentials/credentialsDTO';
 
 @WebSocketGateway({
-  cors: { origin: '*' }, // Autorise toutes les origines
+  cors: { origin: '*' },
 })
 export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly credentialService: CredentialsService) {}

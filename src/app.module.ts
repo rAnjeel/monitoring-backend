@@ -12,7 +12,7 @@ import { HistoricCredentials } from './historic-credentials/historic-credentials
 import { HistoricCredentialsController } from './historic-credentials/historic-credentials.controller';
 import { HistoricCredentialsService } from './historic-credentials/historic-credentials.service'
 import { IpMiddleware } from './middleware/IpMiddleware';
-import { LoginGateway } from './login/login.gateway';
+import { LoginGateway } from './login-socket/login.gateway';
 
 @Module({
   imports: [
