@@ -230,6 +230,111 @@ export class CredentialsService implements NestMiddleware {
     };
   }
 
+  async compareToVerifySitesCredentials(): Promise<{
+      matches: Credentials[];
+      mismatches: Array<{
+        id: number;
+        Ip: string;
+        sitePort: number;
+        siteUsername: string;
+        usernameMatch: boolean;
+        passwordMatch: boolean;
+        portMatch: boolean;
+      }>;
+      stats: {
+        total: number;
+        usernameMatches: number;
+        passwordMatches: number;
+        portMatches: number;
+      };
+  }> {
+    const toVerifyCredentials = await this.findSitesToVerify();
+
+    const matches: Credentials[] = [];
+    const mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+    }> = [];
+
+    let usernameMatches = 0;
+    let passwordMatches = 0;
+    let portMatches = 0;
+
+    const updatePromises: Promise<unknown>[] = [];
+    const createHistoricPromises: Promise<unknown>[] = [];
+
+    for (const credential of toVerifyCredentials) {
+      const isUsernameMatch = credential.siteUsername === credential.siteUsernameEntered;
+      const isPasswordMatch = credential.sitePassword === credential.sitePasswordEntered;
+      const isSitePortMatch = credential.sitePort === credential.sitePortEntered;
+
+      if (isUsernameMatch) usernameMatches++;
+      if (isPasswordMatch) passwordMatches++;
+      if (isSitePortMatch) portMatches++;
+
+      if (isUsernameMatch && isPasswordMatch && isSitePortMatch) {
+        matches.push(credential);
+
+        // Déclencher l’update sans attendre
+        updatePromises.push(
+          this.update(credential.id, {
+            lastDateChange: new Date(),
+          }).catch(err => {
+            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+          })
+        );
+      } else {
+        mismatches.push({
+          id: credential.id,
+          Ip: credential.Ip,
+          sitePort: credential.sitePort,
+          siteUsername: credential.siteUsername,
+          usernameMatch: isUsernameMatch,
+          passwordMatch: isPasswordMatch,
+          portMatch: isSitePortMatch,
+        });
+
+        const errorDetails: string[] = [];
+        if (!isUsernameMatch) errorDetails.push('Username mismatch');
+        if (!isPasswordMatch) errorDetails.push('Password mismatch');
+        if (!isSitePortMatch) errorDetails.push('Port mismatch');
+
+        const errorDescription = errorDetails.join(', ') || 'Mismatch detected';
+
+        createHistoricPromises.push(
+          this.historicCredentialsService.create({
+            siteId: credential.id,
+            connectionErrorDate: new Date(),
+            errorDescription,
+            errorStatus: 'unresolved',
+          }).catch(err => {
+            console.error(`Erreur create historic siteId ${credential.id}`, err);
+          })
+        );
+      }
+    }
+
+    // Attendre toutes les opérations en parallèle
+    await Promise.allSettled(updatePromises);
+    await Promise.allSettled(createHistoricPromises);
+
+    return {
+      matches,
+      mismatches,
+      stats: {
+        total: toVerifyCredentials.length,
+        usernameMatches,
+        passwordMatches,
+        portMatches,
+      },
+    };
+  }
+
   async verifySiteCredentials(
     Ip: string,
     siteUsername: string,
