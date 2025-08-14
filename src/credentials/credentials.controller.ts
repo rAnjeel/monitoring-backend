@@ -23,6 +23,11 @@ export class CredentialsController {
     return this.credentialService.compareCredentials();
   }
 
+  @Get('sync/to-verify')
+  async syncSitesToVerify() {
+    return this.credentialService.compareToVerifySitesCredentials();
+  }
+
   @Get('/:id')
   async getById(@Param('id') id: string) {
     const numericId = parseInt(id, 10);
