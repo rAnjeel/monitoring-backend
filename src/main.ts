@@ -24,7 +24,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
 
   const logger = new Logger('Bootstrap');
-  logger.log(`🚀 HTTP server ready at http://localhost:${port}`);
-  logger.log(`🔌 WebSocket (Socket.IO) ready at ws://localhost:${port}`);
+  logger.log(`HTTP server ready at http://localhost:${port}`);
+  logger.log(`WebSocket (Socket.IO) ready at ws://localhost:${port}`);
 }
 bootstrap();
