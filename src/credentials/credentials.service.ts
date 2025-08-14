@@ -29,7 +29,8 @@ export class CredentialsService implements NestMiddleware {
       ...credentialDTO,
       isSitePasswordVerified: Number(credentialDTO.isSitePasswordVerified),
       sitePort: Number(credentialDTO.sitePort),
-      lastDateChange: new Date()
+      lastDateChange: new Date(),
+      toVerify: credentialDTO.toVerify
     });
   }
 
@@ -37,6 +38,12 @@ export class CredentialsService implements NestMiddleware {
   async findAll(): Promise<Credentials[]> {
     return await this.credentialRepository.find();
   }
+
+  async findSitesToVerify(): Promise<Credentials[]> {
+  return await this.credentialRepository.findBy({
+    toVerify: true
+  });
+}
 
   // READ ONE
   async findOne(id: number): Promise<Credentials | null> {
@@ -307,6 +314,7 @@ export class CredentialsService implements NestMiddleware {
         cs.sitePasswordEntered,
         cs.sitePortEntered,
         cs.lastDateChange,
+        cs.toVerify,
         latest_historic.connectionErrorDate AS lastConnectionError
       FROM credentials_sites cs
       LEFT JOIN (

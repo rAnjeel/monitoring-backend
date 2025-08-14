@@ -13,4 +13,5 @@ export interface Credential {
     sitePortEntered: number;
     lastDateChange: Date;
     lastConnectionError: Date;
+    toVerify: boolean;
 }

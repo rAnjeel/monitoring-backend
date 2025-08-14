@@ -8,4 +8,5 @@ export class CredentialDTO {
   sitePort: number;
   siteSShVersion: string;
   lastDateChange?: Date;
+  toVerify: boolean;
 }
