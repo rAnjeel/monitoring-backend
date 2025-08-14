@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Entity, PrimaryGeneratedColumn, Column } from 'typeorm';
 
-@Entity({ name: 'credentials_sites' }) // Le nom de la table dans la base reste 'credentials_sites'
+@Entity({ name: 'credentials_sites' })
 export class Credentials {
   @PrimaryGeneratedColumn()
   id: number;
@@ -41,4 +41,7 @@ export class Credentials {
     default: () => 'CURRENT_TIMESTAMP',
   })
   lastDateChange: Date;
+
+  @Column('bool')
+  toVerify: boolean;
 }
