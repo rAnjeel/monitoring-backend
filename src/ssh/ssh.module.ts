@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { SshService } from './ssh.service';
 
 @Module({
-  providers: [SshService]
+  providers: [SshService],
+  exports: [SshService],
 })
-export class SshModule {}
+export class SshModule { }
