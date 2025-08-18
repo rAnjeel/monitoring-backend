@@ -16,6 +16,7 @@ import { LoginGateway } from './login/login.gateway';
 import { LoginController } from './login/login.controller';
 import { ConfigModule } from '@nestjs/config';
 import { SshModule } from './ssh/ssh.module';
+import { SshController } from './ssh/ssh.controller';
 
 @Module({
   imports: [
@@ -40,7 +41,7 @@ import { SshModule } from './ssh/ssh.module';
     TypeOrmModule.forFeature([HistoricCredentials]),
     SshModule
   ],
-  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, LoginController],
+  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, LoginController, SshController],
   providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, LoginGateway],
 })
 export class AppModule {}

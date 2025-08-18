@@ -1,36 +1,40 @@
-import { Injectable } from '@nestjs/common';
-import { Worker } from 'worker_threads';
-import * as path from 'path';
-import { WorkerData, WorkerResponse } from './interface/worker.interface';
+import { Injectable, Logger } from '@nestjs/common';
+import { Client } from 'ssh2';
 
+export interface SshCredentials {
+    host: string;
+    port?: number;
+    username: string;
+    password: string;
+}
 
 @Injectable()
 export class SshService {
-    async executeCommand(data: WorkerData): Promise<string> {
+    private readonly logger = new Logger(SshService.name);
+
+    async testConnection(credentials: SshCredentials): Promise<{ status: string }> {
         return new Promise((resolve, reject) => {
-            const workerPath = this.getWorkerPath(data);
-            const worker = new Worker(workerPath, { workerData: data });
-            
-            worker.on('message', (response: WorkerResponse) => {
-                if (response.error) {
-                    reject(new Error(`${response.errorType}: ${response.message}`));
-                } else {
-                    resolve(response.output);
-                }
+            const conn = new Client();
+
+            conn.on('ready', () => {
+                this.logger.log(`Connected to ${credentials.host}`);
+                conn.end();
+                resolve({ status: 'connected' });
             });
-            worker.on('error', reject);
-            worker.on('exit', (code) => {
-                if (code !== 0) reject(new Error(`Worker stopped with exit code ${code}`));
+
+            conn.on('error', (err) => {
+                this.logger.error(`SSH error: ${err.message}`);
+                reject({ status: 'error', message: err.message });
+            });
+
+            conn.connect({
+                host: credentials.host,
+                port: credentials.port,
+                username: credentials.username,
+                password: credentials.password,
+                readyTimeout: 20000,
+                tryKeyboard: true,
             });
         });
-    }
-
-    private getWorkerPath(data: WorkerData): string {
-        const workerDir = path.join(__dirname, 'workers');
-
-        if (data.codeSite === 'ose-shell') {
-            return path.join(workerDir, 'ssh_ose_thread.js');
-        }
-        return path.join(workerDir, 'ssh_thread.js');
     }
 }
