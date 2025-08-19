@@ -38,6 +38,14 @@ export class CredentialsController {
     return this.credentialService.compareToVerifySitesCredentialsBySSH();
   }
 
+  @Post('sync/list')
+  @ApiOperation({ summary: 'Vérifier une liste de credentials' })
+  @ApiBody({ type: [CredentialDTO] })
+  async checkCredentialsList(@Body() credentialsList: CredentialDTO[]) {
+    return await this.credentialService.verifyCredentialsListBySSH(credentialsList);
+  }
+
+
   @Get('/:id')
   @ApiOperation({ summary: 'Récupérer un credential par ID' })
   @ApiParam({ name: 'id', type: Number })
