@@ -8,6 +8,7 @@ import { CredentialDTO } from '../credentials/credentialsDTO';
 import { Credential } from './credentials.interface';
 import { HistoricCredentialsService } from '../historic-credentials/historic-credentials.service';
 import { Request, Response, NextFunction } from 'express';
+import { SshService } from '../ssh/ssh.service';
 
 @Injectable()
 export class CredentialsService implements NestMiddleware {
@@ -16,6 +17,7 @@ export class CredentialsService implements NestMiddleware {
     private credentialRepository: Repository<Credentials>,
     private readonly historicCredentialsService: HistoricCredentialsService,
     private readonly dataSource: DataSource,
+    private readonly sshService: SshService
   ) { }
 
   use(req: Request, res: Response, next: NextFunction) {
@@ -435,5 +437,232 @@ export class CredentialsService implements NestMiddleware {
       console.error('[Service Update] Erreur lors du save:', error);
       throw new Error('Erreur lors de la mise à jour du credential');
     }
+  }
+  /**
+   * Teste la connexion SSH pour tous les credentials
+   * @returns Analyse des réussites et des erreurs détaillées
+   */
+  async compareCredentialsBySSH(): Promise<{
+    matches: Credentials[];
+    mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }>;
+    stats: {
+      total: number;
+      successful: number;
+      failed: number;
+    };
+  }> {
+    const allCredentials = await this.findAll();
+
+    const matches: Credentials[] = [];
+    const mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }> = [];
+
+    let successful = 0;
+    let failed = 0;
+
+    const updatePromises: Promise<unknown>[] = [];
+    const createHistoricPromises: Promise<unknown>[] = [];
+
+    for (const credential of allCredentials) {
+      try {
+        await this.sshService.testConnection({
+          host: credential.Ip,
+          port: credential.sitePort,
+          username: credential.siteUsername,
+          password: credential.sitePassword,
+        });
+
+        matches.push(credential);
+        successful++;
+
+        updatePromises.push(
+          this.update(credential.id, {
+            lastDateChange: new Date(),
+          }).catch(err => {
+            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+          }),
+        );
+      } catch (error) {
+        let errorMessage = 'SSH connection failed';
+
+        if (error instanceof Error) {
+          errorMessage = error.message;
+
+          if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          } else if (error.message.includes('ETIMEDOUT')) {
+            errorMessage = 'Connection timed out (hôte non accessible)';
+          } else if (error.message.includes('All configured authentication methods failed')) {
+            errorMessage = 'Authentication failed (username ou password incorrect)';
+          } else if (error.message.includes('ENOTFOUND')) {
+            errorMessage = 'Host not found (DNS ou IP invalide)';
+          }
+        }
+
+        mismatches.push({
+          id: credential.id,
+          Ip: credential.Ip,
+          sitePort: credential.sitePort,
+          siteUsername: credential.siteUsername,
+          errorDescription: errorMessage,
+        });
+        failed++;
+
+        createHistoricPromises.push(
+          this.historicCredentialsService
+            .create({
+              siteId: credential.id,
+              connectionErrorDate: new Date(),
+              errorDescription: errorMessage,
+              errorStatus: 'unresolved',
+            })
+            .catch(err => {
+              console.error(`Erreur create historic siteId ${credential.id}`, err);
+            }),
+        );
+      }
+    }
+
+    await Promise.allSettled(updatePromises);
+    await Promise.allSettled(createHistoricPromises);
+
+    return {
+      matches,
+      mismatches,
+      stats: {
+        total: allCredentials.length,
+        successful,
+        failed,
+      },
+    };
+  }
+
+  async compareToVerifySitesCredentialsBySSH(): Promise<{
+    matches: Credentials[];
+    mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+    }>;
+    stats: {
+      total: number;
+      usernameMatches: number;
+      passwordMatches: number;
+      portMatches: number;
+    };
+  }> {
+    const toVerifyCredentials = await this.findSitesToVerify();
+
+    const matches: Credentials[] = [];
+    const mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+    }> = [];
+
+    let usernameMatches = 0;
+    let passwordMatches = 0;
+    let portMatches = 0;
+
+    const updatePromises: Promise<unknown>[] = [];
+    const createHistoricPromises: Promise<unknown>[] = [];
+
+    for (const credential of toVerifyCredentials) {
+      try {
+        await this.sshService.testConnection({
+          host: credential.Ip,
+          port: credential.sitePort,
+          username: credential.siteUsername,
+          password: credential.sitePassword,
+        });
+
+        // Si la connexion SSH réussit, tout est considéré comme correct
+        matches.push(credential);
+        usernameMatches++;
+        passwordMatches++;
+        portMatches++;
+
+        // Update lastDateChange
+        updatePromises.push(
+          this.update(credential.id, { lastDateChange: new Date() }).catch(err => {
+            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+          })
+        );
+      } catch (error) {
+        let errorMessage = 'SSH connection failed';
+        const isUsernameMatch = false;
+        const isPasswordMatch = false;
+        const isSitePortMatch = false;
+
+        if (error instanceof Error) {
+          errorMessage = error.message;
+
+          if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          } else if (error.message.includes('ETIMEDOUT')) {
+            errorMessage = 'Connection timed out (hôte non accessible)';
+          } else if (error.message.includes('All configured authentication methods failed')) {
+            errorMessage = 'Authentication failed (username ou password incorrect)';
+            // On peut déduire que username/password est mauvais
+          } else if (error.message.includes('ENOTFOUND')) {
+            errorMessage = 'Host not found (DNS ou IP invalide)';
+          }
+        }
+
+        mismatches.push({
+          id: credential.id,
+          Ip: credential.Ip,
+          sitePort: credential.sitePort,
+          siteUsername: credential.siteUsername,
+          usernameMatch: isUsernameMatch,
+          passwordMatch: isPasswordMatch,
+          portMatch: isSitePortMatch,
+        });
+
+        createHistoricPromises.push(
+          this.historicCredentialsService.create({
+            siteId: credential.id,
+            connectionErrorDate: new Date(),
+            errorDescription: errorMessage,
+            errorStatus: 'unresolved',
+          }).catch(err => {
+            console.error(`Erreur create historic siteId ${credential.id}`, err);
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(updatePromises);
+    await Promise.allSettled(createHistoricPromises);
+
+    return {
+      matches,
+      mismatches,
+      stats: {
+        total: toVerifyCredentials.length,
+        usernameMatches,
+        passwordMatches,
+        portMatches,
+      },
+    };
   }
 }

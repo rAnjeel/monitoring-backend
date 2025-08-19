@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Controller, Post, Body } from '@nestjs/common';
 import { SshService, SshCredentials } from './ssh.service';
 
@@ -10,7 +11,7 @@ export class SshController {
         try {
             return await this.sshService.testConnection(credentials);
         } catch (err) {
-            return err; 
+            return { message: err instanceof Error ? err.message : 'Unknown error' }; 
         }
     }
 }
