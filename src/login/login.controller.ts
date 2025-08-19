@@ -19,7 +19,10 @@ export class LoginController {
   @Post('login')
   async login(@Body() dto: CredentialDTO, @Req() req: Request) {
     const ip = this.getClientIp(req);
+    const siteIp = dto.Ip;
+    const communicationProtocol = 'API';
 
+      
     const result = await this.credentialsService.verifySiteCredentials(
       dto.Ip,
       dto.siteUsername,
@@ -28,9 +31,9 @@ export class LoginController {
     );
 
     if (!result.match) {
-      console.log(`❌ Login échoué depuis IP: ${ip}`);
-      this.loginGateway.emitFailedLogin({ ip, ...result.details });
-      return { status: 'failed', ip, ...result.details };
+        console.log(`❌ Login échoué depuis IP: ${ip}`);
+        this.loginGateway.emitFailedLogin({ip, siteIp, communicationProtocol, ...result});
+        return { status: 'failed', ip, siteIp, communicationProtocol, ...result.details };
     }
 
     return { status: 'success', ip };

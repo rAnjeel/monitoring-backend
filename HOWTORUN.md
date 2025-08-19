@@ -30,6 +30,7 @@ This guide explains how to set up and run the Dockerized application with the re
 ## Docker Setup
 
 1. **Create a docker-compose.yml file in the root Monitoring directory with your service configurations**
+    Requirement: docker-compose installed
     ```bash
     version: '3.8'
 
@@ -109,3 +110,5 @@ Run with
 
 Backend: http://localhost:3000 Run automatically with docker
 
+## Build dependencies
+    npm run build

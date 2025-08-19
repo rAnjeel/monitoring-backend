@@ -46,6 +46,8 @@ export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     const ip = this.getClientIp(client);
+    const siteIp = dto.Ip; 
+    const communicationProtocol = 'socket';
 
     console.log(`📩 [Login Attempt] IP: ${ip} Username: ${dto.siteUsername}`);
 
@@ -59,7 +61,6 @@ export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     const result = {
       userIp: ip,
-      siteIp: dto.Ip,
       status: verification.match ? 'success' : 'failed',
       siteUsername: dto.siteUsername,
       details: {
@@ -72,8 +73,7 @@ export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
     // Envoie le résultat seulement au client qui a tenté
     client.emit('login_result', result);
-
-    // Broadcast aux autres pour monitoring
+    this.emitFailedLogin({ ip, siteIp, communicationProtocol, ...result });
     client.broadcast.emit('login_attempt_log', result);
   }
 

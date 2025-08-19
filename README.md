@@ -103,4 +103,9 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
     docker exec -it monitoring_4g_mysql mysql -u root -p
 
 ## Lancer le projet
+  ```bash
   npm run start:dev
+  ```
+
+## Pour acceder au Swagger
+  http://localhost:3000/api
