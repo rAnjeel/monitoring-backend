@@ -29,13 +29,13 @@ export class CredentialsController {
   @Get('sync')
   @ApiOperation({ summary: 'Comparer les credentials' })
   async syncCredentials() {
-    return this.credentialService.compareCredentials();
+    return this.credentialService.compareCredentialsBySSH();
   }
 
   @Get('sync/to-verify')
   @ApiOperation({ summary: 'Lister les sites à vérifier' })
   async syncSitesToVerify() {
-    return this.credentialService.compareToVerifySitesCredentials();
+    return this.credentialService.compareToVerifySitesCredentialsBySSH();
   }
 
   @Get('/:id')
