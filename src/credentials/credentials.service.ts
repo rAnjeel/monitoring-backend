@@ -665,4 +665,130 @@ export class CredentialsService implements NestMiddleware {
       },
     };
   }
+
+  async verifyCredentialsListBySSH(credentialsList: Partial<CredentialDTO>[]): Promise<{
+    matches: Credentials[];
+    mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+      errorDescription: string;
+    }>;
+    stats: {
+      total: number;
+      usernameMatches: number;
+      passwordMatches: number;
+      portMatches: number;
+    };
+  }> {
+    const matches: Credentials[] = [];
+    const mismatches: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+      errorDescription: string;
+    }> = [];
+
+    let usernameMatches = 0;
+    let passwordMatches = 0;
+    let portMatches = 0;
+
+    const updatePromises: Promise<unknown>[] = [];
+    const createHistoricPromises: Promise<unknown>[] = [];
+
+    for (const dto of credentialsList) {
+      // ⚡ Charger depuis la DB avec l'ID du DTO
+      if (!dto.Ip) {
+        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+      }
+      const credential = await this.findOneByIp(dto.Ip);
+      if (!credential) {
+        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+      }
+      try {
+        await this.sshService.testConnection({
+          host: dto.Ip || credential.Ip,
+          port: dto.sitePort || credential.sitePort,
+          username: dto.siteUsername || credential.siteUsername,
+          password: dto.sitePassword || credential.sitePassword,
+        });
+
+        // Connexion réussie
+        matches.push(credential);
+        usernameMatches++;
+        passwordMatches++;
+        portMatches++;
+
+        updatePromises.push(
+          this.update(credential.id, { lastDateChange: new Date() }).catch(err => {
+            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+          })
+        );
+      } catch (error) {
+        let errorMessage = 'SSH connection failed';
+        const isUsernameMatch = false;
+        const isPasswordMatch = false;
+        let isSitePortMatch = false;
+
+        if (error instanceof Error) {
+          errorMessage = error.message;
+
+          if (error.message.includes('ECONNREFUSED')) {
+            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          } else if (error.message.includes('ETIMEDOUT')) {
+            errorMessage = 'Connection timed out (hôte non accessible)';
+          } else if (error.message.includes('All configured authentication methods failed')) {
+            errorMessage = 'Authentication failed (username ou password incorrect)';
+            isSitePortMatch = true; // port ok mais login/pass KO
+          } else if (error.message.includes('ENOTFOUND')) {
+            errorMessage = 'Host not found (DNS ou IP invalide)';
+          }
+        }
+
+        mismatches.push({
+          id: credential.id,
+          Ip: dto.Ip || credential.Ip,
+          sitePort: dto.sitePort || credential.sitePort,
+          siteUsername: dto.siteUsername || credential.siteUsername,
+          usernameMatch: isUsernameMatch,
+          passwordMatch: isPasswordMatch,
+          portMatch: isSitePortMatch,
+          errorDescription: errorMessage,
+        });
+
+        createHistoricPromises.push(
+          this.historicCredentialsService.create({
+            siteId: credential.id,
+            connectionErrorDate: new Date(),
+            errorDescription: errorMessage,
+            errorStatus: 'unresolved',
+          }).catch(err => {
+            console.error(`Erreur create historic siteId ${credential.id}`, err);
+          })
+        );
+      }
+    }
+
+    await Promise.allSettled(updatePromises);
+    await Promise.allSettled(createHistoricPromises);
+
+    return {
+      matches,
+      mismatches,
+      stats: {
+        total: credentialsList.length,
+        usernameMatches,
+        passwordMatches,
+        portMatches,
+      },
+    };
+  }
 }
