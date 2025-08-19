@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { Client } from 'ssh2';
 
@@ -24,7 +25,7 @@ export class SshService {
 
             conn.on('error', (err) => {
                 this.logger.error(`SSH error: ${err.message}`);
-                reject({ status: 'error', message: err.message });
+                reject(new Error(`SSH error: ${err.message}`));
             });
 
             conn.connect({
