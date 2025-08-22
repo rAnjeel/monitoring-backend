@@ -27,15 +27,6 @@ export class Credentials {
   @Column({ length: 50 })
   siteSShVersion: string;
 
-  @Column({ length: 50 })
-  siteUsernameEntered: string;
-
-  @Column({ length: 50 })
-  sitePasswordEntered: string;
-
-  @Column('int')
-  sitePortEntered: number;
-
   @Column({
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP',
