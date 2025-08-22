@@ -98,7 +98,7 @@ This guide explains how to set up and run the Dockerized application with the re
 3. **Common Commandes**:
     ```bash
     docker-compose down -v 
-    docker-compose build --cache
+    docker-compose build --no-cache
     docker-compose up --build
 
 ## Accessing the Application
