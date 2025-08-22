@@ -33,7 +33,7 @@ export class SshService {
                 port: credentials.port,
                 username: credentials.username,
                 password: credentials.password,
-                readyTimeout: 5000,
+                readyTimeout: 1000,
                 tryKeyboard: true,
             });
         });
