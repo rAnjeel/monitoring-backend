@@ -165,7 +165,7 @@ export class SshService {
                 port: credentials.port,
                 username: credentials.username,
                 password: credentials.password,
-                readyTimeout: 1000 * 60,
+                readyTimeout: 1000 * 10,
                 tryKeyboard: true,
                 debug: (msg: string) => {
                     const elapsedTime = Date.now() - this.connectionStartTime;

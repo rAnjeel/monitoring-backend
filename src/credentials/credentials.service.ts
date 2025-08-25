@@ -497,14 +497,16 @@ export class CredentialsService implements NestMiddleware {
     if (!credential) {
       credential = await this.create({
         ...dto,
-        isSitePasswordVerified: dto.isSitePasswordVerified ?? 0,
+        isSitePasswordVerified: typeof dto.isSitePasswordVerified === 'boolean'
+          ? (dto.isSitePasswordVerified ? "1" : "0") : dto.isSitePasswordVerified?.toString() ?? "0",
         sitePort: Number(dto.sitePort) || 22,
         toVerify: dto.toVerify ?? true,
       } as CredentialDTO);
     } else {
       credential = await this.update(credential.id, {
         ...dto,
-        isSitePasswordVerified: dto.isSitePasswordVerified?.toString() ?? credential.isSitePasswordVerified.toString(),
+        isSitePasswordVerified: typeof dto.isSitePasswordVerified === 'boolean'
+          ? (dto.isSitePasswordVerified ? "1" : "0") : dto.isSitePasswordVerified?.toString() ?? "0",
         sitePort: Number(dto.sitePort) || credential.sitePort,
         lastDateChange: new Date(),
         toVerify: dto.toVerify ?? credential.toVerify,
@@ -527,7 +529,7 @@ export class CredentialsService implements NestMiddleware {
         portMatches++;
 
         updatePromises.push(
-          this.update(credential.id, { lastDateChange: new Date(), toVerify: true }).catch(err => {
+          this.update(credential.id, { lastDateChange: new Date(), toVerify: false }).catch(err => {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           })
         );
