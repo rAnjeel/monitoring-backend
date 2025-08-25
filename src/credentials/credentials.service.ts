@@ -488,14 +488,30 @@ export class CredentialsService implements NestMiddleware {
     const createHistoricPromises: Promise<unknown>[] = [];
 
     for (const dto of credentialsList) {
-      // ⚡ Charger depuis la DB avec l'ID du DTO
       if (!dto.Ip) {
         throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
       }
-      const credential = await this.findOneByIp(dto.Ip);
-      if (!credential) {
-        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
-      }
+
+    let credential = await this.findOneByIp(dto.Ip);
+
+    if (!credential) {
+      credential = await this.create({
+        ...dto,
+        isSitePasswordVerified: dto.isSitePasswordVerified ?? 0,
+        sitePort: Number(dto.sitePort) || 22,
+        toVerify: dto.toVerify ?? true,
+      } as CredentialDTO);
+    } else {
+      credential = await this.update(credential.id, {
+        ...dto,
+        isSitePasswordVerified: dto.isSitePasswordVerified?.toString() ?? credential.isSitePasswordVerified.toString(),
+        sitePort: Number(dto.sitePort) || credential.sitePort,
+        lastDateChange: new Date(),
+        toVerify: dto.toVerify ?? credential.toVerify,
+      });
+    }
+
+
       try {
         await this.sshService.testConnection({
           host: dto.Ip || credential.Ip,
@@ -511,7 +527,7 @@ export class CredentialsService implements NestMiddleware {
         portMatches++;
 
         updatePromises.push(
-          this.update(credential.id, { lastDateChange: new Date() }).catch(err => {
+          this.update(credential.id, { lastDateChange: new Date(), toVerify: true }).catch(err => {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           })
         );
