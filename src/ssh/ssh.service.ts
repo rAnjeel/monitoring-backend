@@ -57,61 +57,10 @@ export class SshService {
 
             const conn = new Client();
 
-            // Log de débogage détaillé avec timing
-            (conn as any).on('debug', (message: string) => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.debug(`[+${elapsedTime}ms] SSH Debug: ${message}`);
-                console.log(`[+${elapsedTime}ms] SSH Debug: ${message}`);
-            });
-
-            conn.on('handshake', (negotiated) => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.debug(`[+${elapsedTime}ms] Handshake initiated`);
-                console.log(`[+${elapsedTime}ms] Handshake initiated`);
-            });
-
-            conn.on('banner', (message) => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.debug(`[+${elapsedTime}ms] Banner received: ${message}`);
-                console.log(`[+${elapsedTime}ms] Banner received: ${message}`);
-            });
-
             conn.on('ready', () => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.log(`[+${elapsedTime}ms] Connected to ${credentials.host}`);
-                console.log(`[+${elapsedTime}ms] Connected to ${credentials.host}`);
-
-                const output: string = '';
-
-                conn.shell((err, stream) => {
-                    if (err) {
-                        const elapsedTime = Date.now() - this.connectionStartTime;
-                        this.logger.error(`[+${elapsedTime}ms] Shell error: ${err.message}`);
-                        console.error(`[+${elapsedTime}ms] ERROR ON EXECUTING SCRIPT =>`, err);
-                        conn.end();
-                        reject(new Error(`Shell error: ${err.message}`));
-                        return;
-                    }
-
-                    stream
-                        .on("close", () => {
-                            const elapsedTime = Date.now() - this.connectionStartTime;
-                            this.logger.debug(`[+${elapsedTime}ms] Shell stream closed`);
-                            conn.end();
-                        })
-                        .on("data", (data: any) => {
-                            const elapsedTime = Date.now() - this.connectionStartTime;
-                            this.logger.debug(`[+${elapsedTime}ms] Shell data: ${data.toString().trim()}`);
-                            console.log(`[+${elapsedTime}ms]`, data.toString());
-                        })
-                        .stderr.on("data", (data) => {
-                            const elapsedTime = Date.now() - this.connectionStartTime;
-                            this.logger.error(`[+${elapsedTime}ms] STDERR: ${data}`);
-                            console.error(`[+${elapsedTime}ms] STDERR =>`, data);
-                        });
-                });
-
-                resolve({ status: 'connected', output });
+                this.logger.log(`Connexion du site réussie (${credentials.host}:${credentials.port || 22})`);
+                conn.end();
+                resolve({ status: 'connected', output: 'Connexion du site réussie' });
             });
 
             conn.on("keyboard-interactive", (name, descr, lang, prompts, finish) => {
@@ -122,12 +71,23 @@ export class SshService {
             });
 
             conn.on('error', (err) => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.error(`[+${elapsedTime}ms] SSH error: ${err.message}`);
-                this.logger.error(`[+${elapsedTime}ms] Error stack: ${err.stack}`);
-                console.error(`[+${elapsedTime}ms] SSH error: ${err.message}`);
+                let friendlyMessage: string;
+
+                if (err.message.includes('ECONNREFUSED')) {
+                    friendlyMessage = 'Erreur détectée: Port invalide ou fermé';
+                } else if (err.message.includes('ETIMEDOUT')) {
+                    friendlyMessage = 'Erreur détectée: Hôte injoignable (timeout)';
+                } else if (err.message.includes('All configured authentication methods failed')) {
+                    friendlyMessage = 'Erreur détectée: Username / Password invalides';
+                } else if (err.message.includes('ENOTFOUND')) {
+                    friendlyMessage = 'Erreur détectée: Hôte introuvable (DNS ou IP invalide)';
+                } else {
+                    friendlyMessage = `Erreur détectée: ${err.message}`;
+                }
+
+                this.logger.error(`${friendlyMessage} (${credentials.host}:${credentials.port || 22})`);
                 conn.end();
-                reject(new Error(`SSH error: ${err.message}`));
+                reject(new Error(friendlyMessage));
             });
 
             conn.on('end', () => {
@@ -140,23 +100,6 @@ export class SshService {
                 const elapsedTime = Date.now() - this.connectionStartTime;
                 this.logger.log(`[+${elapsedTime}ms] Connection closed ${hadError ? 'with error' : 'cleanly'}`);
                 console.log(`[+${elapsedTime}ms] Connection closed ${hadError ? 'with error' : 'cleanly'}`);
-            });
-
-            // Gestion spécifique du timeout
-            conn.on('timeout', () => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.error(`[+${elapsedTime}ms] SSH connection timeout after ${elapsedTime}ms`);
-                console.error(`[+${elapsedTime}ms] SSH connection timeout after ${elapsedTime}ms`);
-                
-                // Log des informations de connexion pour le débogage
-                this.logger.debug(`[+${elapsedTime}ms] Connection details:`, {
-                    host: credentials.host,
-                    port: credentials.port,
-                    username: credentials.username,
-                    timeout: 1000 * 60
-                });
-                
-                reject(new Error(`SSH connection timeout after ${elapsedTime}ms`));
             });
 
             // Configuration de connexion
@@ -175,7 +118,7 @@ export class SshService {
 
             this.logger.debug('Attempting connection with config:', {
                 ...connectionConfig,
-                password: '***' // Masquer le mot de passe dans les logs
+                password: '***'
             });
 
             console.log('Connection config:', {
@@ -185,19 +128,6 @@ export class SshService {
 
             conn.connect(connectionConfig);
 
-            // // Timer pour suivre l'état de la connexion
-            // const checkInterval = setInterval(() => {
-            //     const elapsedTime = Date.now() - this.connectionStartTime;
-            //     this.logger.debug(`[+${elapsedTime}ms] Connection still in progress...`);
-            //     console.log(`[+${elapsedTime}ms] Connection still in progress...`);
-            // }, 1000);
-
-            // // Nettoyer le timer quand la connexion se termine
-            // const cleanup = () => clearInterval(checkInterval);
-            // conn.once('ready', cleanup);
-            // conn.once('error', cleanup);
-            // (conn as any).once('close', cleanup);
-            // conn.once('timeout', cleanup);
         });
     }
 
