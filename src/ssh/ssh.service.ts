@@ -64,9 +64,6 @@ export class SshService {
             });
 
             conn.on("keyboard-interactive", (name, descr, lang, prompts, finish) => {
-                const elapsedTime = Date.now() - this.connectionStartTime;
-                this.logger.debug(`[+${elapsedTime}ms] Keyboard-interactive authentication`);
-                console.log(`[+${elapsedTime}ms] Keyboard-interactive authentication`);
                 return finish([credentials.password]);
             });
 
@@ -108,20 +105,11 @@ export class SshService {
                 port: credentials.port,
                 username: credentials.username,
                 password: credentials.password,
-                readyTimeout: 1000 * 10,
+                readyTimeout: 1000 * 60,
                 tryKeyboard: true,
-                debug: (msg: string) => {
-                    const elapsedTime = Date.now() - this.connectionStartTime;
-                    console.log(`[+${elapsedTime}ms] SSH Internal: ${msg}`);
-                },
             };
 
             this.logger.debug('Attempting connection with config:', {
-                ...connectionConfig,
-                password: '***'
-            });
-
-            console.log('Connection config:', {
                 ...connectionConfig,
                 password: '***'
             });
