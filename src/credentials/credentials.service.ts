@@ -88,8 +88,6 @@ export class CredentialsService implements NestMiddleware {
       throw new NotFoundException(`Credential avec ID ${id} non trouvé`);
     }
 
-    Object.assign(credential, updateDto);
-
     // Résoudre l'historique associé
     const latestHistoric = await this.historicCredentialsService.getLatestUnresolvedBySiteId(id);
     if (latestHistoric) {
@@ -99,19 +97,14 @@ export class CredentialsService implements NestMiddleware {
     }
 
     try {
-      return await this.credentialRepository.save({
-        ...credential,
-        siteUsernameEntered: credential.siteUsername,
-        sitePasswordEntered: credential.sitePassword,
-        sitePortEntered: credential.sitePort,
-        sitePort: Number(credential.sitePort),
-        lastDateChange: new Date()
-      });
+      // Utiliser la fonction update pour bénéficier du cryptage et des autres logiques
+      return await this.update(id, updateDto);
     } catch (error) {
-      console.error('[Service Update] Erreur lors du save:', error);
+      console.error('[Service solveCredentials] Erreur lors de la mise à jour via update():', error);
       throw new Error('Erreur lors de la mise à jour du credential');
     }
   }
+
 
   // DELETE
   async remove(id: number) {
