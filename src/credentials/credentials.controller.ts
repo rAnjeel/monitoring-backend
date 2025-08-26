@@ -32,11 +32,6 @@ export class CredentialsController {
     return this.credentialService.compareCredentialsBySSH();
   }
 
-  @Get('sync/to-verify')
-  @ApiOperation({ summary: 'Lister les sites à vérifier' })
-  async syncSitesToVerify() {
-    return this.credentialService.compareToVerifySitesCredentialsBySSH();
-  }
 
   @Post('sync/list')
   @ApiOperation({ summary: 'Vérifier une liste de credentials' })
@@ -63,33 +58,6 @@ export class CredentialsController {
     }
 
     return credential;
-  }
-
-  @Post('check')
-  @ApiOperation({ summary: 'Vérifier un credential' })
-  @ApiBody({ type: CredentialDTO })
-  async checkCredential(@Body() dto: CredentialDTO, @Req() req: Request) {
-    const ip = this.getClientIp(req);
-
-    const verification = await this.credentialService.verifySiteCredentials(
-      dto.Ip,
-      dto.siteUsername,
-      dto.sitePassword,
-      dto.sitePort,
-    );
-
-    return {
-      userIp: ip,
-      siteIp: dto.Ip,
-      status: verification.match ? 'success' : 'failed',
-      siteUsername: dto.siteUsername,
-      details: {
-        usernameMatch: verification.details.usernameMatch,
-        passwordMatch: verification.details.passwordMatch,
-        portMatch: verification.details.portMatch,
-      },
-      error: verification.error || undefined,
-    };
   }
 
   private getClientIp(req: Request): string {

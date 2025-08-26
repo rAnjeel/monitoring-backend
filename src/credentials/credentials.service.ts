@@ -29,10 +29,8 @@ export class CredentialsService implements NestMiddleware {
   async create(credentialDTO: CredentialDTO) {
     return await this.credentialRepository.save({
       ...credentialDTO,
-      isSitePasswordVerified: Number(credentialDTO.isSitePasswordVerified),
       sitePort: Number(credentialDTO.sitePort),
       lastDateChange: new Date(),
-      toVerify: credentialDTO.toVerify
     });
   }
 
@@ -41,11 +39,6 @@ export class CredentialsService implements NestMiddleware {
     return await this.credentialRepository.find();
   }
 
-  async findSitesToVerify(): Promise<Credentials[]> {
-  return await this.credentialRepository.findBy({
-    toVerify: true
-  });
-}
 
   // READ ONE
   async findOne(id: number): Promise<Credentials | null> {
@@ -73,7 +66,6 @@ export class CredentialsService implements NestMiddleware {
         siteUsernameEntered: credential.siteUsername,
         sitePasswordEntered: credential.sitePassword,
         sitePortEntered: credential.sitePort,
-        isSitePasswordVerified: Number(credential.isSitePasswordVerified),
         sitePort: Number(credential.sitePort),
       });
     } catch (error) {
@@ -108,7 +100,6 @@ export class CredentialsService implements NestMiddleware {
         siteUsernameEntered: credential.siteUsername,
         sitePasswordEntered: credential.sitePassword,
         sitePortEntered: credential.sitePort,
-        isSitePasswordVerified: Number(credential.isSitePasswordVerified),
         sitePort: Number(credential.sitePort),
         lastDateChange: new Date()
       });
@@ -123,74 +114,6 @@ export class CredentialsService implements NestMiddleware {
     return await this.credentialRepository.delete(id);
   }
 
-  async verifySiteCredentials(
-    Ip: string,
-    siteUsername: string,
-    sitePassword: string,
-    sitePort: number
-  ): Promise<{
-    match: boolean;
-    details: {
-      usernameMatch: boolean;
-      passwordMatch: boolean;
-      portMatch: boolean;
-    };
-    error?: string;
-  }> {
-    try {
-      // 1. Récupérer le credential du site
-      const credential = await this.findOneByIp(Ip);
-      if (!credential) {
-        return {
-          match: false,
-          details: { usernameMatch: false, passwordMatch: false, portMatch: false },
-          error: 'Site not found',
-        };
-      }
-
-      // 2. Comparer les valeurs
-      const usernameMatch = credential.siteUsername === siteUsername;
-      const passwordMatch = credential.sitePassword === sitePassword;
-      const portMatch = credential.sitePort === sitePort;
-
-      // 3. Vérifier le match complet
-      const fullMatch = usernameMatch && passwordMatch && portMatch;
-
-      // 4. Loguer l'historique si mismatch
-      if (!fullMatch) {
-        const errorDetails: string[] = [];
-        if (!usernameMatch) errorDetails.push('Username mismatch');
-        if (!passwordMatch) errorDetails.push('Password mismatch');
-        if (!portMatch) errorDetails.push('Port mismatch');
-
-        await this.historicCredentialsService.create({
-          siteId: credential.id,
-          connectionErrorDate: new Date(),
-          errorDescription: errorDetails.join(', '),
-          errorStatus: 'unresolved',
-        }).catch(err => console.error(`Error creating history for site ${Ip}`, err));
-      }
-
-      // 5. Mettre à jour la date si match
-      if (fullMatch) {
-        await this.update(credential.id, { lastDateChange: new Date() } as Partial<CredentialDTO>)
-          .catch(err => console.error(`Error updating site ${Ip}`, err));
-      }
-
-      return {
-        match: fullMatch,
-        details: { usernameMatch, passwordMatch, portMatch },
-      };
-    } catch (error) {
-      console.error(`Error verifying credentials for site ${Ip}`, error);
-      return {
-        match: false,
-        details: { usernameMatch: false, passwordMatch: false, portMatch: false },
-        error: 'Internal server error',
-      };
-    }
-  }
-
   async getCredentialsWithLastErrorDate(): Promise<any[]> {
     try {
       const result: Credential[] = await this.dataSource.query(`
@@ -200,11 +123,9 @@ export class CredentialsService implements NestMiddleware {
         cs.CodeSite,
         cs.siteUsername,
         cs.sitePassword,
-        cs.isSitePasswordVerified,
         cs.sitePort,
         cs.siteSShVersion,
         cs.lastDateChange,
-        cs.toVerify,
         latest_historic.connectionErrorDate AS lastConnectionError
       FROM credentials_sites cs
       LEFT JOIN (
@@ -331,124 +252,6 @@ export class CredentialsService implements NestMiddleware {
     };
   }
 
-  async compareToVerifySitesCredentialsBySSH(): Promise<{
-    matches: Credentials[];
-    mismatches: Array<{
-      id: number;
-      Ip: string;
-      sitePort: number;
-      siteUsername: string;
-      usernameMatch: boolean;
-      passwordMatch: boolean;
-      portMatch: boolean;
-    }>;
-    stats: {
-      total: number;
-      usernameMatches: number;
-      passwordMatches: number;
-      portMatches: number;
-    };
-  }> {
-    const toVerifyCredentials = await this.findSitesToVerify();
-
-    const matches: Credentials[] = [];
-    const mismatches: Array<{
-      id: number;
-      Ip: string;
-      sitePort: number;
-      siteUsername: string;
-      usernameMatch: boolean;
-      passwordMatch: boolean;
-      portMatch: boolean;
-    }> = [];
-
-    let usernameMatches = 0;
-    let passwordMatches = 0;
-    let portMatches = 0;
-
-    const updatePromises: Promise<unknown>[] = [];
-    const createHistoricPromises: Promise<unknown>[] = [];
-
-    for (const credential of toVerifyCredentials) {
-      try {
-        await this.sshService.testConnection({
-          host: credential.Ip,
-          port: credential.sitePort,
-          username: credential.siteUsername,
-          password: credential.sitePassword,
-        });
-
-        // Si la connexion SSH réussit, tout est considéré comme correct
-        matches.push(credential);
-        usernameMatches++;
-        passwordMatches++;
-        portMatches++;
-
-        // Update lastDateChange
-        updatePromises.push(
-          this.update(credential.id, { lastDateChange: new Date() }).catch(err => {
-            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
-          })
-        );
-      } catch (error) {
-        let errorMessage = 'SSH connection failed';
-        const isUsernameMatch = false;
-        const isPasswordMatch = false;
-        const isSitePortMatch = false;
-
-        if (error instanceof Error) {
-          errorMessage = error.message;
-
-          if (error.message.includes('ECONNREFUSED')) {
-            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
-          } else if (error.message.includes('ETIMEDOUT')) {
-            errorMessage = 'Connection timed out (hôte non accessible)';
-          } else if (error.message.includes('All configured authentication methods failed')) {
-            errorMessage = 'Authentication failed (username ou password incorrect)';
-            // On peut déduire que username/password est mauvais
-          } else if (error.message.includes('ENOTFOUND')) {
-            errorMessage = 'Host not found (DNS ou IP invalide)';
-          }
-        }
-
-        mismatches.push({
-          id: credential.id,
-          Ip: credential.Ip,
-          sitePort: credential.sitePort,
-          siteUsername: credential.siteUsername,
-          usernameMatch: isUsernameMatch,
-          passwordMatch: isPasswordMatch,
-          portMatch: isSitePortMatch,
-        });
-
-        createHistoricPromises.push(
-          this.historicCredentialsService.create({
-            siteId: credential.id,
-            connectionErrorDate: new Date(),
-            errorDescription: errorMessage,
-            errorStatus: 'unresolved',
-          }).catch(err => {
-            console.error(`Erreur create historic siteId ${credential.id}`, err);
-          })
-        );
-      }
-    }
-
-    await Promise.allSettled(updatePromises);
-    await Promise.allSettled(createHistoricPromises);
-
-    return {
-      matches,
-      mismatches,
-      stats: {
-        total: toVerifyCredentials.length,
-        usernameMatches,
-        passwordMatches,
-        portMatches,
-      },
-    };
-  }
-
   async verifyCredentialsListBySSH(credentialsList: Partial<CredentialDTO>[]): Promise<{
     matches: Credentials[];
     mismatches: Array<{
@@ -497,19 +300,13 @@ export class CredentialsService implements NestMiddleware {
     if (!credential) {
       credential = await this.create({
         ...dto,
-        isSitePasswordVerified: typeof dto.isSitePasswordVerified === 'boolean'
-          ? (dto.isSitePasswordVerified ? "1" : "0") : dto.isSitePasswordVerified?.toString() ?? "0",
         sitePort: Number(dto.sitePort) || 22,
-        toVerify: dto.toVerify ?? true,
       } as CredentialDTO);
     } else {
       credential = await this.update(credential.id, {
         ...dto,
-        isSitePasswordVerified: typeof dto.isSitePasswordVerified === 'boolean'
-          ? (dto.isSitePasswordVerified ? "1" : "0") : dto.isSitePasswordVerified?.toString() ?? "0",
         sitePort: Number(dto.sitePort) || credential.sitePort,
         lastDateChange: new Date(),
-        toVerify: dto.toVerify ?? credential.toVerify,
       });
     }
 
@@ -529,7 +326,7 @@ export class CredentialsService implements NestMiddleware {
         portMatches++;
 
         updatePromises.push(
-          this.update(credential.id, { lastDateChange: new Date(), toVerify: false }).catch(err => {
+          this.update(credential.id, { lastDateChange: new Date()}).catch(err => {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           })
         );
