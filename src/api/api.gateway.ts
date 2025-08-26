@@ -15,7 +15,7 @@ import { CredentialDTO } from '../credentials/credentialsDTO';
 @WebSocketGateway({
   cors: { origin: '*' },
 })
-export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ApiGateway implements OnGatewayConnection, OnGatewayDisconnect {
   constructor(private readonly credentialService: CredentialsService) {}
 
   @WebSocketServer()
@@ -46,34 +46,33 @@ export class LoginGateway implements OnGatewayConnection, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ): Promise<void> {
     const ip = this.getClientIp(client);
-    const siteIp = dto.Ip; 
+    const siteIp = dto.Ip;
     const communicationProtocol = 'socket';
 
     console.log(`📩 [Login Attempt] IP: ${ip} Username: ${dto.siteUsername}`);
 
-    // Vérification des credentials
-    const verification = await this.credentialService.verifySiteCredentials(
-      dto.Ip,
-      dto.siteUsername,
-      dto.sitePassword,
-      dto.sitePort,
-    );
+    // ⚡ On appelle avec un tableau
+    const verification = await this.credentialService.verifyCredentialsListBySSH([dto]);
+
+    const isSuccess = verification.matches.length > 0;
 
     const result = {
       userIp: ip,
-      status: verification.match ? 'success' : 'failed',
+      status: isSuccess ? 'success' : 'failed',
       siteUsername: dto.siteUsername,
       details: {
-        usernameMatch: verification.details.usernameMatch,
-        passwordMatch: verification.details.passwordMatch,
-        portMatch: verification.details.portMatch,
+        usernameMatch: isSuccess ? true : verification.mismatches[0]?.usernameMatch,
+        passwordMatch: isSuccess ? true : verification.mismatches[0]?.passwordMatch,
+        portMatch: isSuccess ? true : verification.mismatches[0]?.portMatch,
       },
-      error: verification.error || undefined,
+      error: isSuccess ? undefined : verification.mismatches[0]?.errorDescription,
     };
 
-    // Envoie le résultat seulement au client qui a tenté
     client.emit('login_result', result);
-    this.emitFailedLogin({ ip, siteIp, communicationProtocol, ...result });
+    if (!isSuccess) {
+      this.emitFailedLogin({ ip, siteIp, communicationProtocol, ...result });
+    }
+
     client.broadcast.emit('login_attempt_log', result);
   }
 

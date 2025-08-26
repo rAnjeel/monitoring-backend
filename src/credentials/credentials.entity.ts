@@ -19,9 +19,6 @@ export class Credentials {
   sitePassword: string;
 
   @Column('int')
-  isSitePasswordVerified: number;
-
-  @Column('int')
   sitePort: number;
 
   @Column({ length: 50 })
@@ -33,6 +30,4 @@ export class Credentials {
   })
   lastDateChange: Date;
 
-  @Column('bool')
-  toVerify: boolean;
 }
