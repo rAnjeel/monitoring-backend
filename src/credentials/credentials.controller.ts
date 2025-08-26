@@ -40,6 +40,13 @@ export class CredentialsController {
     return await this.credentialService.verifyCredentialsListBySSH(credentialsList);
   }
 
+  @Post('sync/database')
+  @ApiOperation({ summary: 'Vérifier une liste de credentials dans la base de données' })
+  @ApiBody({ type: [CredentialDTO] })
+  async checkCredentialsDatabase(@Body() credentialsList: CredentialDTO[]) {
+    return await this.credentialService.verifyCredentialsDatabaseBySSH(credentialsList);
+  }
+
 
   @Get('/:id')
   @ApiOperation({ summary: 'Récupérer un credential par ID' })
