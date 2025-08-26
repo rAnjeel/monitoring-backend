@@ -307,9 +307,6 @@ export class CredentialsService implements NestMiddleware {
         sitePort: Number(dto.sitePort) || 22,
       } as CredentialDTO);
     } else {
-      if (dto.sitePassword) {
-         dto.sitePassword = this.encryptionService.decrypt(dto.sitePassword);
-      }
       credential = await this.update(credential.id, {
         ...dto,
         sitePort: Number(dto.sitePort) || credential.sitePort,
