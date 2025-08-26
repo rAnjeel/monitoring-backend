@@ -17,6 +17,7 @@ import { ApiController } from './api/api.controller';
 import { ConfigModule } from '@nestjs/config';
 import { SshModule } from './ssh/ssh.module';
 import { SshController } from './ssh/ssh.controller';
+import { HealthController } from './utils/health/health.controller';
 
 @Module({
   imports: [
@@ -41,7 +42,7 @@ import { SshController } from './ssh/ssh.controller';
     TypeOrmModule.forFeature([HistoricCredentials]),
     SshModule
   ],
-  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, ApiController, SshController],
+  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, ApiController, SshController, HealthController],
   providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, ApiGateway],
 })
 export class AppModule {}
