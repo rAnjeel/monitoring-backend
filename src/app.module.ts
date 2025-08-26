@@ -18,6 +18,7 @@ import { ConfigModule } from '@nestjs/config';
 import { SshModule } from './ssh/ssh.module';
 import { SshController } from './ssh/ssh.controller';
 import { HealthController } from './utils/health/health.controller';
+import { EncryptionService } from './utils/sha/encryption.service';
 
 @Module({
   imports: [
@@ -43,6 +44,6 @@ import { HealthController } from './utils/health/health.controller';
     SshModule
   ],
   controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, ApiController, SshController, HealthController],
-  providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, ApiGateway],
+  providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, ApiGateway, EncryptionService],
 })
 export class AppModule {}

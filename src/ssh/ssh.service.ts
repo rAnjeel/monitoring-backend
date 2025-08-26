@@ -1,6 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { Client } from 'ssh2';
+import { EncryptionService } from '../utils/sha/encryption.service';
 
 export interface SshCredentials {
     host: string;
@@ -13,6 +14,7 @@ export interface SshCredentials {
 export class SshService {
     private readonly logger = new Logger(SshService.name);
     private connectionStartTime: number;
+    private readonly encryptionService: EncryptionService;
 
     async testConnection(credentials: SshCredentials): Promise<{ status: string, output: string }> {
         return new Promise((resolve, reject) => {
@@ -111,7 +113,7 @@ export class SshService {
 
             this.logger.debug('Attempting connection with config:', {
                 ...connectionConfig,
-                password: '***'
+                password: credentials.password,
             });
 
             conn.connect(connectionConfig);

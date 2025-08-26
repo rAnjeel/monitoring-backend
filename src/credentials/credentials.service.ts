@@ -9,6 +9,7 @@ import { Credential } from './credentials.interface';
 import { HistoricCredentialsService } from '../historic-credentials/historic-credentials.service';
 import { Request, Response, NextFunction } from 'express';
 import { SshService } from '../ssh/ssh.service';
+import { EncryptionService } from '../utils/sha/encryption.service';
 
 @Injectable()
 export class CredentialsService implements NestMiddleware {
@@ -17,7 +18,8 @@ export class CredentialsService implements NestMiddleware {
     private credentialRepository: Repository<Credentials>,
     private readonly historicCredentialsService: HistoricCredentialsService,
     private readonly dataSource: DataSource,
-    private readonly sshService: SshService
+    private readonly sshService: SshService,
+    private readonly encryptionService: EncryptionService
   ) { }
 
   use(req: Request, res: Response, next: NextFunction) {
@@ -29,6 +31,7 @@ export class CredentialsService implements NestMiddleware {
   async create(credentialDTO: CredentialDTO) {
     return await this.credentialRepository.save({
       ...credentialDTO,
+      sitePassword: this.encryptionService.encrypt(credentialDTO.sitePassword),
       sitePort: Number(credentialDTO.sitePort),
       lastDateChange: new Date(),
     });
@@ -58,14 +61,15 @@ export class CredentialsService implements NestMiddleware {
       throw new NotFoundException(`Credential avec ID ${id} non trouvé`);
     }
 
+    if (updateDto.sitePassword) {
+      updateDto.sitePassword = this.encryptionService.encrypt(updateDto.sitePassword);
+    }
+
     Object.assign(credential, updateDto);
 
     try {
       return await this.credentialRepository.save({
         ...credential,
-        siteUsernameEntered: credential.siteUsername,
-        sitePasswordEntered: credential.sitePassword,
-        sitePortEntered: credential.sitePort,
         sitePort: Number(credential.sitePort),
       });
     } catch (error) {
@@ -184,7 +188,7 @@ export class CredentialsService implements NestMiddleware {
           host: credential.Ip,
           port: credential.sitePort,
           username: credential.siteUsername,
-          password: credential.sitePassword,
+          password: this.encryptionService.decrypt(credential.sitePassword),
         });
 
         matches.push(credential);
@@ -303,6 +307,9 @@ export class CredentialsService implements NestMiddleware {
         sitePort: Number(dto.sitePort) || 22,
       } as CredentialDTO);
     } else {
+      if (dto.sitePassword) {
+         dto.sitePassword = this.encryptionService.decrypt(dto.sitePassword);
+      }
       credential = await this.update(credential.id, {
         ...dto,
         sitePort: Number(dto.sitePort) || credential.sitePort,
@@ -316,7 +323,7 @@ export class CredentialsService implements NestMiddleware {
           host: dto.Ip || credential.Ip,
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
-          password: dto.sitePassword || credential.sitePassword,
+          password: this.encryptionService.decrypt(dto.sitePassword || credential.sitePassword),
         });
 
         // Connexion réussie

@@ -15,7 +15,7 @@ export class Credentials {
   @Column({ length: 50 })
   siteUsername: string;
 
-  @Column({ length: 50 })
+  @Column({ length: 255 })
   sitePassword: string;
 
   @Column('int')

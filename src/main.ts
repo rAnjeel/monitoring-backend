@@ -1,4 +1,15 @@
 /* eslint-disable prettier/prettier */
+
+process.on('warning', (warning) => {
+  if (
+    (warning.name === 'DeprecationWarning' && warning.message.includes('crypto.createCipher')) ||
+    warning.message.includes('Use Cipheriv for counter mode of aes-256-ctr')
+  ) {
+    return;
+  }
+  console.warn(warning.name, warning.message);
+});
+
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
