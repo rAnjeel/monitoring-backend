@@ -114,24 +114,32 @@ export class CredentialsService implements NestMiddleware {
   async getCredentialsWithLastErrorDate(): Promise<any[]> {
     try {
       const result: Credential[] = await this.dataSource.query(`
-      SELECT 
-        cs.id,
-        cs.Ip,
-        cs.CodeSite,
-        cs.siteUsername,
-        cs.sitePassword,
-        cs.sitePort,
-        cs.siteSShVersion,
-        cs.lastDateChange,
-        latest_historic.connectionErrorDate AS lastConnectionError
-      FROM credentials_sites cs
-      LEFT JOIN (
-        SELECT siteId, MAX(connectionErrorDate) AS connectionErrorDate
-        FROM credentials_sites_historic
-        GROUP BY siteId
-      ) AS latest_historic
-      ON cs.id = latest_historic.siteId;
-    `);
+        SELECT 
+          cs.id,
+          cs.Ip,
+          cs.CodeSite,
+          cs.siteUsername,
+          cs.sitePassword,
+          cs.sitePort,
+          cs.siteSShVersion,
+          cs.lastDateChange,
+          latest_historic.connectionErrorDate AS lastConnectionError,
+          latest_historic.errorStatus
+        FROM credentials_sites cs
+        LEFT JOIN (
+          SELECT h1.siteId, h1.connectionErrorDate, h1.errorStatus
+          FROM credentials_sites_historic h1
+          INNER JOIN (
+            SELECT siteId, MAX(connectionErrorDate) AS maxDate
+            FROM credentials_sites_historic
+            GROUP BY siteId
+          ) h2
+          ON h1.siteId = h2.siteId AND h1.connectionErrorDate = h2.maxDate
+        ) AS latest_historic
+        ON cs.id = latest_historic.siteId
+        WHERE latest_historic.errorStatus = 'unresolved';
+      `);
+
     return result;
 
     } catch (error) {
