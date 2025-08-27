@@ -618,17 +618,6 @@ export class CredentialsService implements NestMiddleware {
           portMatch: isSitePortMatch,
           errorDescription: errorMessage,
         });
-
-        createHistoricPromises.push(
-          this.historicCredentialsService.create({
-            siteId: credential.id,
-            connectionErrorDate: new Date(),
-            errorDescription: errorMessage,
-            errorStatus: 'unresolved',
-          }).catch(err => {
-            console.error(`Erreur create historic siteId ${credential.id}`, err);
-          })
-        );
       }
     }
 
