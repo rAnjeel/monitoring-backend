@@ -444,7 +444,6 @@ export class CredentialsService implements NestMiddleware {
       credential = await this.update(credential.id, {
         ...dto,
         sitePort: Number(dto.sitePort) || credential.sitePort,
-        lastDateChange: new Date(),
       });
     }
 
