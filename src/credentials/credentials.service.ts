@@ -454,7 +454,7 @@ export class CredentialsService implements NestMiddleware {
           host: dto.Ip || credential.Ip,
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
-          password: this.encryptionService.decrypt(dto.sitePassword || credential.sitePassword),
+          password: dto.sitePassword || credential.sitePassword,
         });
 
         // Connexion réussie
