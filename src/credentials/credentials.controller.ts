@@ -85,6 +85,14 @@ export class CredentialsController {
     return req.socket?.remoteAddress || 'unknown-ip';
   }
 
+  @Put('update/:id')
+  @ApiOperation({ summary: 'Update un credential' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiBody({ type: CredentialDTO })
+  async update(@Param('id') id: string, @Body() updateDto: Partial<CredentialDTO>) {
+    return this.credentialService.update(Number(id), updateDto);
+  }
+
   @Put('solve/:id')
   @ApiOperation({ summary: 'Résoudre une erreur de credentials' })
   @ApiParam({ name: 'id', type: Number })
