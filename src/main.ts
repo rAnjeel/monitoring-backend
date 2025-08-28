@@ -15,14 +15,15 @@ import { AppModule } from './app.module';
 import { Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
 
-  // Active CORS pour toutes les origines (développement)
-  const corsOrigins = process.env.CORS_ORIGIN
-    ? process.env.CORS_ORIGIN.split(',').map((o) => o.trim())
-    : ['http://localhost:5173', 'http://localhost:5174'];
+  // CORS
+  const corsEnv = configService.get<string>('CORS_ORIGIN');
+  const corsOrigins = corsEnv ? corsEnv.split(',').map(o => o.trim()) : [];
 
   app.enableCors({
     origin: corsOrigins,
@@ -42,7 +43,7 @@ async function bootstrap() {
    
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  const port = Number(process.env.PORT ?? 3000);
+  const port = Number(configService.get<string>('PORT') ?? 3000);
   await app.listen(port, '0.0.0.0');
 
   const logger = new Logger('Bootstrap');

@@ -23,8 +23,8 @@ import { EncryptionService } from './utils/sha/encryption.service';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, // makes it available everywhere without importing again
-      envFilePath: '.env', // you can also set a specific path
+      isGlobal: true, 
+      envFilePath: '.env',
    }),
     TypeOrmModule.forRoot({
       type: 'mysql',
