@@ -68,10 +68,18 @@ export class CredentialsService implements NestMiddleware {
     Object.assign(credential, updateDto);
 
     try {
-      return await this.credentialRepository.save({
+      const latestHistoric = await this.historicCredentialsService.getLatestUnresolvedBySiteId(credential.id);
+      if (latestHistoric) {
+        latestHistoric.errorResolutionDate = new Date();
+        latestHistoric.errorStatus = 'resolved';
+        await this.historicCredentialsService.update(latestHistoric.id, latestHistoric);
+      }
+      const  response = await this.credentialRepository.save({
         ...credential,
         sitePort: Number(credential.sitePort),
       });
+
+      return response;
     } catch (error) {
       console.error('[Service Update] Erreur lors du save:', error);
       throw new Error('Erreur lors de la mise à jour du credential');
