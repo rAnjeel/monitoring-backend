@@ -14,7 +14,7 @@ import { HistoricCredentialsService } from './historic-credentials/historic-cred
 import { IpMiddleware } from './middleware/IpMiddleware';
 import { ApiGateway } from './api/api.gateway';
 import { ApiController } from './api/api.controller';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { SshModule } from './ssh/ssh.module';
 import { SshController } from './ssh/ssh.controller';
 import { HealthController } from './utils/health/health.controller';
@@ -23,27 +23,46 @@ import { EncryptionService } from './utils/sha/encryption.service';
 @Module({
   imports: [
     ConfigModule.forRoot({
-      isGlobal: true, 
-      envFilePath: '.env',
-   }),
-    TypeOrmModule.forRoot({
-      type: 'mysql',
-      host: process.env.MYSQL_HOST || 'localhost',
-      port: Number(process.env.MYSQL_PORT) || 3307,
-      username: process.env.MYSQL_USER || 'monitoring_user',
-      password: process.env.MYSQL_PASSWORD || 'monitoring_password',
-      database: process.env.MYSQL_DATABASE || 'monitoring_4g',
-      autoLoadEntities: true,
-      synchronize: true,
-      extra: {
-        timezone: '+03:00' 
-      },
+      isGlobal: true,
+    }),
+    TypeOrmModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        type: 'mysql',
+        host: configService.get<string>('MYSQL_HOST'),
+        port: configService.get<number>('MYSQL_PORT'),
+        username: configService.get<string>('MYSQL_USER'),
+        password: configService.get<string>('MYSQL_PASSWORD'),
+        database: configService.get<string>('MYSQL_DATABASE'),
+        autoLoadEntities: true,
+        synchronize: true,
+        extra: {
+          timezone: configService.get<string>('TIMEZONE'),
+        },
+      }),
     }),
     TypeOrmModule.forFeature([Credentials]),
     TypeOrmModule.forFeature([HistoricCredentials]),
-    SshModule
+    SshModule,
   ],
-  controllers: [AppController, CsvImportController, CredentialsController, HistoricCredentialsController, ApiController, SshController, HealthController],
-  providers: [AppService, CsvImportService, CredentialsService, HistoricCredentialsService, IpMiddleware, ApiGateway, EncryptionService],
+  controllers: [
+    AppController,
+    CsvImportController,
+    CredentialsController,
+    HistoricCredentialsController,
+    ApiController,
+    SshController,
+    HealthController,
+  ],
+  providers: [
+    AppService,
+    CsvImportService,
+    CredentialsService,
+    HistoricCredentialsService,
+    IpMiddleware,
+    ApiGateway,
+    EncryptionService,
+  ],
 })
 export class AppModule {}
