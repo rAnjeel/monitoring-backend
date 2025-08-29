@@ -65,12 +65,13 @@ This guide explains how to set up and run the Dockerized application with the re
         MYSQL_DATABASE: ${MYSQL_DATABASE:-monitoring_4g}
         MYSQL_USER: ${MYSQL_USER:-monitoring_user}
         MYSQL_PASSWORD: ${MYSQL_PASSWORD:-monitoring_password}
-        CORS_ORIGIN: http://localhost:5173,http://localhost:4000
+        CORS_ORIGIN: http://localhost:5173
         NODE_ENV: development
         ports:
         - "3000:3000"
         volumes:
         - ./backend:/app
+        - ./backend/.env:/app/.env
         - /app/node_modules
 
 
@@ -79,16 +80,18 @@ This guide explains how to set up and run the Dockerized application with the re
         context: ./frontend
         dockerfile: Dockerfile
         args:
-            VITE_API_BASE_URL: http://localhost:4000
+            VITE_API_BASE_URL: http://localhost:3000
         container_name: monitoring_4g_frontend
-        depends_on:
-        - gateway
         ports:
-        - "8080:80"
+        - "8080:8080"
+        volumes:
+        - ./frontend:/app
+        - /app/node_modules
 
     volumes:
     mysql_data:
     backend_uploads:
+
 
 2. **Build and run the containers**:
     ```bash
