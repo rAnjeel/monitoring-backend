@@ -21,14 +21,13 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  // CORS
-  const corsEnv = configService.get<string>('CORS_ORIGIN');
-
+  // Lire CORS depuis .env
+  const corsEnv = configService.get<string>('CORS_ORIGINS')?.split(',').map(origin => origin.trim()) || [];
   app.enableCors({
-    origin: 'http://localhost:8080',
+    origin: corsEnv,
     credentials: true,
   });
-  
+
   const config = new DocumentBuilder()
     .setTitle('API Credentials')
     .setDescription('Documentation de l’API de gestion des credentials')
@@ -39,10 +38,10 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
-   
   app.useWebSocketAdapter(new IoAdapter(app));
 
-  const port = Number(configService.get<string>('PORT') ?? 3000);
+  // Lire PORT depuis .env
+  const port = Number(configService.get<string>('PORT'));
   await app.listen(port, '0.0.0.0');
 
   const logger = new Logger('Bootstrap');
