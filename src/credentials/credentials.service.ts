@@ -139,7 +139,7 @@ export class CredentialsService implements NestMiddleware {
           ON h1.siteId = h2.siteId AND h1.connectionErrorDate = h2.maxDate
         ) AS latest_historic
         ON cs.id = latest_historic.siteId
-        WHERE latest_historic.errorStatus = 'unresolved' GROUP BY cs.id;
+        WHERE latest_historic.errorStatus = 'unresolved' ORDER BY cs.id;
       `);
 
     return result;
