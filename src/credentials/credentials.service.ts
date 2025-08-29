@@ -301,13 +301,18 @@ export class CredentialsService implements NestMiddleware {
       }
 
       let credential = await this.findOneByIp(dto.Ip);
-
       if (!credential) {
         credential = await this.create({
           ...dto,
           sitePort: Number(dto.sitePort) || 22,
         } as CredentialDTO);
-      } 
+      } else {
+        credential = await this.update(credential.id, {
+          ...dto,
+          sitePort: Number(dto.sitePort) || credential.sitePort,
+          lastDateChange: new Date(),
+        });
+      }
       
       console.log('Vérification du credential:', {
         password: dto.sitePassword || credential.sitePassword
@@ -331,10 +336,19 @@ export class CredentialsService implements NestMiddleware {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           })
         );
+
+        // Résoudre l'historique associé
+        const latestHistoric = await this.historicCredentialsService.getLatestUnresolvedBySiteId(credential.id);
+        if (latestHistoric) {
+          latestHistoric.errorResolutionDate = new Date();
+          latestHistoric.errorStatus = 'resolved';
+          await this.historicCredentialsService.update(latestHistoric.id, latestHistoric);
+        }
+
       } catch (error) {
         let errorMessage = 'SSH connection failed';
-        const isUsernameMatch = false;
-        const isPasswordMatch = false;
+        let isUsernameMatch = false;
+        let isPasswordMatch = false;
         let isSitePortMatch = false;
 
         if (error instanceof Error) {
@@ -342,11 +356,13 @@ export class CredentialsService implements NestMiddleware {
 
           if (error.message.includes('ECONNREFUSED')) {
             errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
           } else if (error.message.includes('ETIMEDOUT')) {
             errorMessage = 'Connection timed out (hôte non accessible)';
           } else if (error.message.includes('All configured authentication methods failed')) {
             errorMessage = 'Authentication failed (username ou password incorrect)';
-            isSitePortMatch = true; // port ok mais login/pass KO
+            isSitePortMatch = true; 
           } else if (error.message.includes('ENOTFOUND')) {
             errorMessage = 'Host not found (DNS ou IP invalide)';
           }
@@ -461,10 +477,19 @@ export class CredentialsService implements NestMiddleware {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           })
         );
+
+        // Résoudre l'historique associé
+        const latestHistoric = await this.historicCredentialsService.getLatestUnresolvedBySiteId(credential.id);
+        if (latestHistoric) {
+          latestHistoric.errorResolutionDate = new Date();
+          latestHistoric.errorStatus = 'resolved';
+          await this.historicCredentialsService.update(latestHistoric.id, latestHistoric);
+        }
+
       } catch (error) {
         let errorMessage = 'SSH connection failed';
-        const isUsernameMatch = false;
-        const isPasswordMatch = false;
+        let isUsernameMatch = false;
+        let isPasswordMatch = false;
         let isSitePortMatch = false;
 
         if (error instanceof Error) {
@@ -472,6 +497,8 @@ export class CredentialsService implements NestMiddleware {
 
           if (error.message.includes('ECONNREFUSED')) {
             errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
           } else if (error.message.includes('ETIMEDOUT')) {
             errorMessage = 'Connection timed out (hôte non accessible)';
           } else if (error.message.includes('All configured authentication methods failed')) {
@@ -589,8 +616,8 @@ export class CredentialsService implements NestMiddleware {
 
       } catch (error) {
         let errorMessage = 'SSH connection failed';
-        const isUsernameMatch = false;
-        const isPasswordMatch = false;
+        let isUsernameMatch = false;
+        let isPasswordMatch = false;
         let isSitePortMatch = false;
 
         if (error instanceof Error) {
@@ -598,6 +625,8 @@ export class CredentialsService implements NestMiddleware {
 
           if (error.message.includes('ECONNREFUSED')) {
             errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
           } else if (error.message.includes('ETIMEDOUT')) {
             errorMessage = 'Connection timed out (hôte non accessible)';
           } else if (error.message.includes('All configured authentication methods failed')) {
