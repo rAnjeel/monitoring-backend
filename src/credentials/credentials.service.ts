@@ -68,12 +68,6 @@ export class CredentialsService implements NestMiddleware {
     Object.assign(credential, updateDto);
 
     try {
-      const latestHistoric = await this.historicCredentialsService.getLatestUnresolvedBySiteId(credential.id);
-      if (latestHistoric) {
-        latestHistoric.errorResolutionDate = new Date();
-        latestHistoric.errorStatus = 'resolved';
-        await this.historicCredentialsService.update(latestHistoric.id, latestHistoric);
-      }
       const  response = await this.credentialRepository.save({
         ...credential,
         sitePort: Number(credential.sitePort),
