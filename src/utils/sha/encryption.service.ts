@@ -1,22 +1,24 @@
 import { Injectable } from '@nestjs/common';
-import * as crypto from 'crypto';
+import { HttpService } from '@nestjs/axios';
+import { firstValueFrom } from 'rxjs';
 
 @Injectable()
 export class EncryptionService {
-  private readonly algorithm = 'aes-256-ctr';
-  private readonly password = 'NocAdmin123';
+  private readonly baseUrl = 'http://localhost:4000';
 
-  encrypt(text: string): string {
-    const cipher = (crypto as any).createCipher(this.algorithm, this.password);
-    let crypted = cipher.update(text, 'utf8', 'hex');
-    crypted += cipher.final('hex');
-    return crypted;
+  constructor(private readonly http: HttpService) {}
+
+  async encrypt(text: string): Promise<string> {
+    const res = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/encrypt`, { text }),
+    );
+    return res.data.encrypted;
   }
 
-  decrypt(text: string): string {
-    const decipher = (crypto as any).createDecipher(this.algorithm, this.password);
-    let decrypted = decipher.update(text, 'hex', 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+  async decrypt(text: string): Promise<string> {
+    const res = await firstValueFrom(
+      this.http.post(`${this.baseUrl}/decrypt`, { text }),
+    );
+    return res.data.decrypted;
   }
 }
