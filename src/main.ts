@@ -1,12 +1,6 @@
 /* eslint-disable prettier/prettier */
 import * as nodeCrypto from 'crypto';
 
-if (!globalThis.crypto) {
-  (globalThis as any).crypto = {
-    randomUUID: () => nodeCrypto.randomUUID()
-  };
-}
-
 process.on('warning', (warning) => {
   if (
     (warning.name === 'DeprecationWarning' && warning.message.includes('crypto.createCipher')) ||
@@ -16,6 +10,13 @@ process.on('warning', (warning) => {
   }
   console.warn(warning.name, warning.message);
 });
+
+if (!globalThis.crypto) {
+  (globalThis as any).crypto = {
+    randomUUID: () => nodeCrypto.randomUUID()
+  };
+}
+
 
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
