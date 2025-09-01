@@ -109,3 +109,10 @@ Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ## Pour acceder au Swagger
   http://localhost:3000/api
+
+
+## Commandes utiles
+  ```bash
+  rm -rf node_modules package-lock.json
+  rm -rf dist
+  ```

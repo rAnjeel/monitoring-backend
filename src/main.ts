@@ -1,4 +1,11 @@
 /* eslint-disable prettier/prettier */
+import * as nodeCrypto from 'crypto';
+
+if (!globalThis.crypto) {
+  (globalThis as any).crypto = {
+    randomUUID: () => nodeCrypto.randomUUID()
+  };
+}
 
 process.on('warning', (warning) => {
   if (
@@ -16,6 +23,7 @@ import { Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);

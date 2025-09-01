@@ -42,7 +42,7 @@
     "socket.io-client": "^4.8.1",
     "ssh2": "^1.16.0",
     "swagger-ui-express": "^5.0.1",
-    "typeorm": "^0.3.25"
+    "typeorm": "^0.3.26"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
