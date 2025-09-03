@@ -103,10 +103,10 @@ export class SshService {
 
             // Configuration de connexion
             const connectionConfig = {
-                host: credentials.host,
+                host: credentials.host.trim(),
                 port: credentials.port,
-                username: credentials.username,
-                password: credentials.password,
+                username: credentials.username.trim(),
+                password: credentials.password.trim(),
                 readyTimeout: 1000 * 10,
                 tryKeyboard: true,
             };
