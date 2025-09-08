@@ -192,6 +192,7 @@ export class CredentialsService implements NestMiddleware {
           port: credential.sitePort,
           username: credential.siteUsername,
           password: this.encryptionService.decrypt(credential.sitePassword),
+          siteSShVersion: credential.siteSShVersion,
         });
 
         matches.push(credential);
@@ -325,6 +326,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: dto.sitePassword || credential.sitePassword,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -466,6 +468,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: this.encryptionService.decrypt(dto.sitePassword || credential.sitePassword),
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -608,6 +611,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: dto.sitePassword || credential.sitePassword,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -667,4 +671,125 @@ export class CredentialsService implements NestMiddleware {
     };
   }
 
+  async discoverCredentialsList(credentialsList: Partial<CredentialDTO>[]): Promise<{
+    discoveries: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      siteSShVersion: string;
+      password: string;
+    }>;
+    errors: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }>;
+    stats: {
+      total: number;
+      success: number;
+      failed: number;
+    };
+  }> {
+    const discoveries: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      siteSShVersion: string;
+      password: string;
+    }> = [];
+
+    const errors: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }> = [];
+
+    let success = 0;
+    let failed = 0;
+
+    for (const dto of credentialsList) {
+      if (!dto.Ip) {
+        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+      }
+
+      // récupérer ou créer en base
+      let credential = await this.findOneByIp(dto.Ip);
+      if (!credential) {
+        credential = await this.create({
+          ...dto,
+          sitePort: Number(dto.sitePort) || 22,
+        } as CredentialDTO);
+      }
+
+      try {
+        // Appel de discover → ne fournit que host + username
+        const found = await this.sshService.discover({
+          host: dto.Ip || credential.Ip,
+          username: dto.siteUsername || credential.siteUsername,
+        });
+
+        if (found) {
+          discoveries.push({
+            id: credential.id,
+            Ip: dto.Ip || credential.Ip,
+            sitePort: found.port!,
+            siteUsername: found.username,
+            siteSShVersion: found.siteSShVersion,
+            password: found.password,
+          });
+
+          // Mise à jour en base avec les bons credentials trouvés
+          await this.update(credential.id, {
+            sitePort: found.port,
+            siteUsername: found.username,
+            sitePassword: this.encryptionService.encrypt(found.password),
+            siteSShVersion: found.siteSShVersion,
+            lastDateChange: new Date(),
+          });
+
+          success++;
+        } else {
+          errors.push({
+            id: credential.id,
+            Ip: dto.Ip || credential.Ip,
+            sitePort: dto.sitePort || credential.sitePort,
+            siteUsername: dto.siteUsername || credential.siteUsername,
+            errorDescription: 'Aucun credentials valides trouvés',
+          });
+          failed++;
+        }
+      } catch (error) {
+        let errorMessage = 'SSH discovery failed';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        errors.push({
+          id: credential.id,
+          Ip: dto.Ip || credential.Ip,
+          sitePort: dto.sitePort || credential.sitePort,
+          siteUsername: dto.siteUsername || credential.siteUsername,
+          errorDescription: errorMessage,
+        });
+
+        failed++;
+      }
+    }
+
+    return {
+      discoveries,
+      errors,
+      stats: {
+        total: credentialsList.length,
+        success,
+        failed,
+      },
+    };
+  }
 }

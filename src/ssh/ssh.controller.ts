@@ -14,4 +14,13 @@ export class SshController {
             return { message: err instanceof Error ? err.message : 'Unknown error' }; 
         }
     }
+
+    @Post('discover')
+    async discoverCredential(@Body() credentials: SshCredentials) {
+        try {
+            return await this.sshService.discover(credentials);
+        } catch (err) {
+            return { message: err instanceof Error ? err.message : 'Unknown error' }; 
+        }
+    }
 }
