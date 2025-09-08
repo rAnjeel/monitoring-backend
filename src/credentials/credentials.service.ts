@@ -192,6 +192,7 @@ export class CredentialsService implements NestMiddleware {
           port: credential.sitePort,
           username: credential.siteUsername,
           password: this.encryptionService.decrypt(credential.sitePassword),
+          siteSShVersion: credential.siteSShVersion,
         });
 
         matches.push(credential);
@@ -325,6 +326,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: dto.sitePassword || credential.sitePassword,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -466,6 +468,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: this.encryptionService.decrypt(dto.sitePassword || credential.sitePassword),
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -608,6 +611,7 @@ export class CredentialsService implements NestMiddleware {
           port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
           password: dto.sitePassword || credential.sitePassword,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
         // Connexion réussie
@@ -666,5 +670,109 @@ export class CredentialsService implements NestMiddleware {
       },
     };
   }
+
+  async discoverCredentialsList(credentialsList: CredentialDTO[]): Promise<{
+    discoveries: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      siteSShVersion: string;
+      discoveryResult: any;
+    }>;
+    errors: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }>;
+    stats: {
+      total: number;
+      success: number;
+      failed: number;
+    };
+  }> {
+    const discoveries: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      siteSShVersion: string;
+      discoveryResult: any;
+    }> = [];
+
+    const errors: Array<{
+      id: number;
+      Ip: string;
+      sitePort: number;
+      siteUsername: string;
+      errorDescription: string;
+    }> = [];
+
+    let success = 0;
+    let failed = 0;
+
+    for (const dto of credentialsList) {
+      if (!dto.Ip) {
+        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+      }
+
+      let credential = await this.findOneByIp(dto.Ip);
+      if (!credential) {
+        credential = await this.create({
+          ...dto,
+          sitePort: Number(dto.sitePort) || 22,
+        } as CredentialDTO);
+      }
+
+      try {
+        const discoveryResult = await this.sshService.discover({
+          host: dto.Ip || credential.Ip,
+          port: dto.sitePort || credential.sitePort,
+          username: dto.siteUsername || credential.siteUsername,
+          password: dto.sitePassword || credential.sitePassword,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
+        });
+
+        discoveries.push({
+          id: credential.id,
+          Ip: dto.Ip || credential.Ip,
+          sitePort: dto.sitePort || credential.sitePort,
+          siteUsername: dto.siteUsername || credential.siteUsername,
+          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
+          discoveryResult,
+        });
+
+        success++;
+      } catch (error) {
+        let errorMessage = 'SSH discovery failed';
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+
+        errors.push({
+          id: credential.id,
+          Ip: dto.Ip || credential.Ip,
+          sitePort: dto.sitePort || credential.sitePort,
+          siteUsername: dto.siteUsername || credential.siteUsername,
+          errorDescription: errorMessage,
+        });
+
+        failed++;
+      }
+    }
+
+    return {
+      discoveries,
+      errors,
+      stats: {
+        total: credentialsList.length,
+        success,
+        failed,
+      },
+    };
+  }
+
 
 }
