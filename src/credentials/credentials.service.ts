@@ -745,13 +745,14 @@ export class CredentialsService implements NestMiddleware {
           });
 
           // Mise à jour en base avec les bons credentials trouvés
-          await this.update(credential.id, {
+          await this.solveCredentials(credential.id, {
             sitePort: found.port,
             siteUsername: found.username,
             sitePassword: this.encryptionService.encrypt(found.password),
             siteSShVersion: found.siteSShVersion,
             lastDateChange: new Date(),
           });
+          console.log('Mise à jour du credential ID', credential.id, 'avec les infos découvertes.');
 
           success++;
         } else {
