@@ -84,7 +84,6 @@ export class SshService {
             reject(new Error(friendlyMessage));
             });
 
-            // Configuration de connexion
             const connectionConfig = {
             host: credentials.host.trim(),
             port: credentials.port,
@@ -134,7 +133,6 @@ export class SshService {
         }
     }
 
-    // Méthode utilitaire pour tester la connectivité réseau
     async testNetworkConnectivity(host: string, port: number = 22): Promise<void> {
         this.logger.debug(`Testing network connectivity to ${host}:${port}`);
         
