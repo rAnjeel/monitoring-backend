@@ -671,14 +671,14 @@ export class CredentialsService implements NestMiddleware {
     };
   }
 
-  async discoverCredentialsList(credentialsList: CredentialDTO[]): Promise<{
+  async discoverCredentialsList(credentialsList: Partial<CredentialDTO>[]): Promise<{
     discoveries: Array<{
       id: number;
       Ip: string;
       sitePort: number;
       siteUsername: string;
       siteSShVersion: string;
-      discoveryResult: any;
+      password: string;
     }>;
     errors: Array<{
       id: number;
@@ -699,7 +699,7 @@ export class CredentialsService implements NestMiddleware {
       sitePort: number;
       siteUsername: string;
       siteSShVersion: string;
-      discoveryResult: any;
+      password: string;
     }> = [];
 
     const errors: Array<{
@@ -718,6 +718,7 @@ export class CredentialsService implements NestMiddleware {
         throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
       }
 
+      // récupérer ou créer en base
       let credential = await this.findOneByIp(dto.Ip);
       if (!credential) {
         credential = await this.create({
@@ -727,24 +728,42 @@ export class CredentialsService implements NestMiddleware {
       }
 
       try {
-        const discoveryResult = await this.sshService.discover({
+        // Appel de discover → ne fournit que host + username
+        const found = await this.sshService.discover({
           host: dto.Ip || credential.Ip,
-          port: dto.sitePort || credential.sitePort,
           username: dto.siteUsername || credential.siteUsername,
-          password: dto.sitePassword || credential.sitePassword,
-          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
         });
 
-        discoveries.push({
-          id: credential.id,
-          Ip: dto.Ip || credential.Ip,
-          sitePort: dto.sitePort || credential.sitePort,
-          siteUsername: dto.siteUsername || credential.siteUsername,
-          siteSShVersion: dto.siteSShVersion || credential.siteSShVersion,
-          discoveryResult,
-        });
+        if (found) {
+          discoveries.push({
+            id: credential.id,
+            Ip: dto.Ip || credential.Ip,
+            sitePort: found.port!,
+            siteUsername: found.username,
+            siteSShVersion: found.siteSShVersion,
+            password: found.password,
+          });
 
-        success++;
+          // Mise à jour en base avec les bons credentials trouvés
+          await this.update(credential.id, {
+            sitePort: found.port,
+            siteUsername: found.username,
+            sitePassword: this.encryptionService.encrypt(found.password),
+            siteSShVersion: found.siteSShVersion,
+            lastDateChange: new Date(),
+          });
+
+          success++;
+        } else {
+          errors.push({
+            id: credential.id,
+            Ip: dto.Ip || credential.Ip,
+            sitePort: dto.sitePort || credential.sitePort,
+            siteUsername: dto.siteUsername || credential.siteUsername,
+            errorDescription: 'Aucun credentials valides trouvés',
+          });
+          failed++;
+        }
       } catch (error) {
         let errorMessage = 'SSH discovery failed';
         if (error instanceof Error) {
@@ -773,6 +792,4 @@ export class CredentialsService implements NestMiddleware {
       },
     };
   }
-
-
 }

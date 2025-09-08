@@ -32,15 +32,12 @@ export class CredentialsController {
     return this.credentialService.compareCredentialsBySSH();
   }
 
-
   @Post('sync/list')
   @ApiOperation({ summary: 'Vérifier une liste de credentials' })
   @ApiBody({ type: [CredentialDTO] })
   async checkCredentialsList(@Body() credentialsList: CredentialDTO[]) {
     return await this.credentialService.verifyCredentialsListBySSH(credentialsList);
   }
-
-  
 
   @Post('sync/database')
   @ApiOperation({ summary: 'Vérifier une liste de credentials dans la base de données' })
@@ -56,6 +53,12 @@ export class CredentialsController {
     return await this.credentialService.verifyCredentialsBySSH(credentialsList);
   }
 
+  @Post('discover/list')
+  @ApiOperation({ summary: 'Chercher la liste des credentials par brute force' })
+  @ApiBody({ type: [CredentialDTO] })
+  async discoverCredentials(@Body() credentialsList: CredentialDTO[]) {
+    return await this.credentialService.discoverCredentialsList(credentialsList);
+  }
 
   @Get('/:id')
   @ApiOperation({ summary: 'Récupérer un credential par ID' })

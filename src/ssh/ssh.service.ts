@@ -103,7 +103,7 @@ export class SshService {
             { port: 22, password: 'rbs', shell: 'ose-shell' },
             { port: 22, password: 'Ericssonrbs1@', shell: 'usual-shell' },
             { port: 22, password: 'Ericssonrbs1@', shell: 'ose-shell' },
-            { port: 22, password: 'sshpass1', shell: 'usual-shell' },
+            { port: 22, password: '1234', shell: 'usual-shell' },
             { port: 2023, password: 'anltlm2bsc7-GLX@', shell: 'usual-shell' },
             { port: 2023, password: 'anltlm2bsc7-GLX@', shell: 'ose-shell' },
             { port: 2023, password: 'rbs', shell: 'usual-shell' },
