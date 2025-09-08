@@ -115,3 +115,6 @@ Backend: http://localhost:3000 Run automatically with docker
 
 ## Build dependencies
     npm run build
+
+## Connexion en tant que root
+    docker exec -it monitoring_4g_mysql mysql -u root -p

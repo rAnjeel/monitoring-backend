@@ -9,6 +9,10 @@ ALTER TABLE credentials_sites_historic AUTO_INCREMENT = 1;
 TRUNCATE TABLE credentials_sites;
 ALTER TABLE credentials_sites AUTO_INCREMENT = 1;
 
+-- Vide la table des pass-credentials et réinitialise son auto-incrémentation
+TRUNCATE TABLE pass_credentials;
+ALTER TABLE pass_credentials AUTO_INCREMENT = 1;
+
 -- Réactive la vérification des contraintes de clés étrangères
 SET FOREIGN_KEY_CHECKS = 1;
 

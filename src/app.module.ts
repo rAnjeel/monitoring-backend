@@ -19,6 +19,11 @@ import { SshModule } from './ssh/ssh.module';
 import { SshController } from './ssh/ssh.controller';
 import { HealthController } from './utils/health/health.controller';
 import { EncryptionService } from './utils/sha/encryption.service';
+import { PassCredentials } from './utils/pass-credentials/pass-credentials.entity';
+import { PassCredentialsController } from './utils/pass-credentials/pass-credentials.controller';
+import { PassCredentialsService } from './utils/pass-credentials/pass-credentials.service';
+import { SeedPassCredentialsService } from './utils/pass-credentials/seed-pass-credentials.service';
+import { PassCredentialsModule } from './utils/pass-credentials/pass-credentials.module';
 
 @Module({
   imports: [
@@ -44,7 +49,9 @@ import { EncryptionService } from './utils/sha/encryption.service';
     }),
     TypeOrmModule.forFeature([Credentials]),
     TypeOrmModule.forFeature([HistoricCredentials]),
+    TypeOrmModule.forFeature([PassCredentials]),
     SshModule,
+    PassCredentialsModule
   ],
   controllers: [
     AppController,
@@ -54,6 +61,7 @@ import { EncryptionService } from './utils/sha/encryption.service';
     ApiController,
     SshController,
     HealthController,
+    PassCredentialsController,
   ],
   providers: [
     AppService,
@@ -63,6 +71,8 @@ import { EncryptionService } from './utils/sha/encryption.service';
     IpMiddleware,
     ApiGateway,
     EncryptionService,
+    PassCredentialsService,
+    SeedPassCredentialsService
   ],
 })
 export class AppModule {}

@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { Client } from 'ssh2';
-import { EncryptionService } from '../utils/sha/encryption.service';
+import { PassCredentialsService } from '../utils/pass-credentials/pass-credentials.service';
 
 export interface SshCredentials {
     host: string;
@@ -15,7 +15,10 @@ export interface SshCredentials {
 export class SshService {
     private readonly logger = new Logger(SshService.name);
     private connectionStartTime: number;
-    private readonly encryptionService: EncryptionService;
+
+    constructor(
+        private readonly passCredentialsService: PassCredentialsService,
+    ) {}
 
     async testConnection(credentials: SshCredentials): Promise<{ status: string, output: string }> {
         return new Promise((resolve, reject) => {
@@ -95,51 +98,41 @@ export class SshService {
         });
     }
 
-    async discover(credentials: Omit<SshCredentials, 'port' | 'password' | 'siteSShVersion'>): Promise<SshCredentials | null> {
-        const arrayPassword = [
-            { port: 22, password: 'anltlm2bsc7-GLX@', shell: 'usual-shell' },
-            { port: 22, password: 'anltlm2bsc7-GLX@', shell: 'ose-shell' },
-            { port: 22, password: 'rbs', shell: 'usual-shell' },
-            { port: 22, password: 'rbs', shell: 'ose-shell' },
-            { port: 22, password: 'Ericssonrbs1@', shell: 'usual-shell' },
-            { port: 22, password: 'Ericssonrbs1@', shell: 'ose-shell' },
-            { port: 2023, password: 'anltlm2bsc7-GLX@', shell: 'usual-shell' },
-            { port: 2023, password: 'anltlm2bsc7-GLX@', shell: 'ose-shell' },
-            { port: 2023, password: 'rbs', shell: 'usual-shell' },
-            { port: 2023, password: 'rbs', shell: 'ose-shell' },
-            { port: 2023, password: 'Ericssonrbs1@', shell: 'usual-shell' },
-            { port: 2023, password: 'Ericssonrbs1@', shell: 'ose-shell' },
-        ];
+    async discover(
+    credentials: Omit<SshCredentials, 'port' | 'password' | 'siteSShVersion'>
+    ): Promise<SshCredentials | null> {
+        const arrayPassword = await this.passCredentialsService.findAll(); // OK maintenant
+        this.logger.log("ArrayPass", arrayPassword);
 
-        const attempts = arrayPassword.map((attempt) => {
+        const attempts = arrayPassword.map(async (attempt) => {
             const candidate: SshCredentials = {
-                ...credentials,
-                port: attempt.port,
-                password: attempt.password,
-                siteSShVersion: attempt.shell,
+            ...credentials,
+            port: Number(attempt.sitePort),
+            password: attempt.password,
+            siteSShVersion: attempt.siteSSHVersion,
             };
 
-            return this.testConnection(candidate)
-                .then(() => {
-                    this.logger.log(`[Credentials valides trouvés]: ${JSON.stringify(candidate)}`);
-                    return candidate;
-                })
-                .catch((err) => {
-                    this.logger.debug(
-                        `[Tentative échouée ${candidate.username}@${candidate.host}]:${candidate.port} [${candidate.siteSShVersion}] → ${err.message}`,
-                    );
-                    throw err;
-                });
+            this.logger.log("candidate", candidate);
+
+            try {
+            await this.testConnection(candidate);
+            this.logger.log(`[Credentials valides trouvés]: ${JSON.stringify(candidate)}`);
+            return candidate;
+            } catch (err) {
+            this.logger.debug(
+                `[Tentative échouée ${candidate.username}@${candidate.host}]:${candidate.port} [${candidate.siteSShVersion}] → ${err.message}`
+            );
+            throw err;
+            }
         });
 
         try {
             return await Promise.any(attempts);
-        } catch (aggregateError) {
+        } catch {
             this.logger.warn(`Aucun credentials valides trouvés pour ${credentials.username}@${credentials.host}`);
             return null;
         }
     }
-
 
     // Méthode utilitaire pour tester la connectivité réseau
     async testNetworkConnectivity(host: string, port: number = 22): Promise<void> {

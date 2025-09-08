@@ -24,6 +24,7 @@ import { Logger } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
+import { SeedPassCredentialsService } from './utils/pass-credentials/seed-pass-credentials.service';
 
 
 async function bootstrap() {
@@ -48,6 +49,10 @@ async function bootstrap() {
   SwaggerModule.setup('api', app, document);
 
   app.useWebSocketAdapter(new IoAdapter(app));
+
+  // Seed PassCredentials
+  const seedService = app.get(SeedPassCredentialsService);
+  await seedService.run();
 
   // Lire PORT depuis .env
   const port = Number(configService.get<string>('PORT'));

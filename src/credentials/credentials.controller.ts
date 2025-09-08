@@ -6,7 +6,6 @@ import {
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiBody } from '@nestjs/swagger';
 import { CredentialsService } from '../credentials/credentials.service';
 import { CredentialDTO } from '../credentials/credentialsDTO';
-import { Request } from 'express';
 
 @ApiTags('Credentials')
 @Controller('credentials')
@@ -77,17 +76,6 @@ export class CredentialsController {
     }
 
     return credential;
-  }
-
-  private getClientIp(req: Request): string {
-    if (req['clientIp']) return req['clientIp'] as string;
-    const xForwardedFor = req.headers['x-forwarded-for'];
-    if (Array.isArray(xForwardedFor)) {
-      return xForwardedFor[0];
-    } else if (typeof xForwardedFor === 'string') {
-      return xForwardedFor.split(',')[0].trim();
-    }
-    return req.socket?.remoteAddress || 'unknown-ip';
   }
 
   @Put('update/:id')
