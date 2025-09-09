@@ -1,3 +1,4 @@
+/* eslint-disable prettier/prettier */
 import { Injectable, Logger } from '@nestjs/common';
 import { PassCredentialsService } from './pass-credentials.service';
 import { PassCredentialsDTO } from './pass-credentialsDTO';
