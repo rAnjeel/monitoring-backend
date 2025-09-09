@@ -58,7 +58,7 @@ export class CredentialsService implements NestMiddleware {
   ): Promise<Credentials> {
     const credential = await this.credentialRepository.findOneBy({ id });
     if (!credential) {
-      throw new NotFoundException(`Credential avec ID ${id} non trouvé`);
+      throw new NotFoundException(`Credential with ID ${id} not found`);
     }
 
     if (updateDto.sitePassword) {
@@ -76,7 +76,7 @@ export class CredentialsService implements NestMiddleware {
       return response;
     } catch (error) {
       console.error('[Service Update] Erreur lors du save:', error);
-      throw new Error('Erreur lors de la mise à jour du credential');
+      throw new Error('Failed to update credential');
     }
   }
 
@@ -103,7 +103,7 @@ export class CredentialsService implements NestMiddleware {
       return await this.update(id, updateDto);
     } catch (error) {
       console.error('[Service solveCredentials] Erreur lors de la mise à jour via update():', error);
-      throw new Error('Erreur lors de la mise à jour du credential');
+      throw new Error('Failed to update credential/historic-credential');
     }
   }
 
@@ -145,8 +145,8 @@ export class CredentialsService implements NestMiddleware {
     return result;
 
     } catch (error) {
-      console.error('[Service Update] Erreur lors du save:', error);
-      throw new Error('Erreur lors de la mise à jour du credential');
+      console.error('[Service Update] Error lors du save:', error);
+      throw new Error('Failed to get historic-credential');
     }
   }
   /**
@@ -300,7 +300,7 @@ export class CredentialsService implements NestMiddleware {
 
     for (const dto of credentialsList) {
       if (!dto.Ip) {
-        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+        throw new NotFoundException(`Credential with IP ${dto.Ip} not found`);
       }
 
       let credential = await this.findOneByIp(dto.Ip);
@@ -479,7 +479,7 @@ export class CredentialsService implements NestMiddleware {
 
         updatePromises.push(
           this.update(credential.id, { lastDateChange: new Date()}).catch(err => {
-            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+            console.error(`Error on update lastDateChange siteId ${credential.id}`, err);
           })
         );
 
@@ -593,7 +593,7 @@ export class CredentialsService implements NestMiddleware {
 
     for (const dto of credentialsList) {
       if (!dto.Ip) {
-        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+        throw new NotFoundException(`Credential with IP ${dto.Ip} not found`);
       }
 
       let credential = await this.findOneByIp(dto.Ip);
@@ -685,6 +685,7 @@ export class CredentialsService implements NestMiddleware {
       Ip: string;
       sitePort: number;
       siteUsername: string;
+      CodeSite: string;
       errorDescription: string;
     }>;
     stats: {
@@ -707,6 +708,7 @@ export class CredentialsService implements NestMiddleware {
       Ip: string;
       sitePort: number;
       siteUsername: string;
+      CodeSite: string;
       errorDescription: string;
     }> = [];
 
@@ -715,7 +717,7 @@ export class CredentialsService implements NestMiddleware {
 
     for (const dto of credentialsList) {
       if (!dto.Ip) {
-        throw new NotFoundException(`Credential avec IP ${dto.Ip} non trouvé`);
+        throw new NotFoundException(`Credential with IP ${dto.Ip} not found`);
       }
 
       // récupérer ou créer en base
@@ -728,7 +730,7 @@ export class CredentialsService implements NestMiddleware {
       }
 
       try {
-        // Appel de discover → ne fournit que host + username
+        // Appel de discover → ne fournit que host + username et rejette port|password|siteSShVersion
         const found = await this.sshService.discover({
           host: dto.Ip || credential.Ip,
           username: dto.siteUsername || credential.siteUsername,
@@ -761,7 +763,8 @@ export class CredentialsService implements NestMiddleware {
             Ip: dto.Ip || credential.Ip,
             sitePort: dto.sitePort || credential.sitePort,
             siteUsername: dto.siteUsername || credential.siteUsername,
-            errorDescription: 'Aucun credentials valides trouvés',
+            CodeSite: dto.CodeSite || credential.CodeSite,
+            errorDescription: 'No valid credential found',
           });
           failed++;
         }
@@ -776,6 +779,7 @@ export class CredentialsService implements NestMiddleware {
           Ip: dto.Ip || credential.Ip,
           sitePort: dto.sitePort || credential.sitePort,
           siteUsername: dto.siteUsername || credential.siteUsername,
+          CodeSite: dto.CodeSite || credential.CodeSite,
           errorDescription: errorMessage,
         });
 
