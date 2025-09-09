@@ -25,42 +25,47 @@ export class SshService {
             this.connectionStartTime = Date.now();
             const conn = new Client();
 
-            conn.on("ready", () => {
-            this.logger.log(`Connexion SSH réussie (${credentials.host}:${credentials.port || 22})`);
-
+        conn.on("ready", () => {
             // Vérification du shell utilisateur
             conn.exec("echo $SHELL", (err, stream) => {
                 if (err) {
-                conn.end();
-                return reject(new Error(`Impossible de déterminer le shell: ${err.message}`));
+                    conn.end();
+                    return reject(new Error(`Impossible de déterminer le shell: ${err.message}`));
                 }
 
                 let shellOutput = "";
                 stream.on("data", (data: Buffer) => {
-                shellOutput += data.toString().trim();
+                    shellOutput += data.toString().trim();
                 });
 
                 stream.on("close", () => {
-                this.logger.debug(`Shell détecté: ${shellOutput}`);
+                    const detectedShell = shellOutput.split("/").pop() || shellOutput;
+                    this.logger.debug(`Shell détecté: ${detectedShell}`);
 
-                if (credentials.siteSShVersion === "ose-shell") {
-                    if (!shellOutput.includes("ose-shell")) {
-                    conn.end();
-                    return reject(new Error(`Erreur détectée: Shell attendu "ose-shell", mais trouvé "${shellOutput}"`));
+                    if (credentials.siteSShVersion === "ose-shell") {
+                        if (detectedShell !== "ose-shell") {
+                            conn.end();
+                            return reject(new Error(
+                                `Erreur détectée: Shell attendu "ose-shell", mais trouvé "${detectedShell}"`
+                            ));
+                        }
+                    } else if (credentials.siteSShVersion === "usual-shell") {
+                        if (detectedShell === "ose-shell") {
+                            conn.end();
+                            return reject(new Error(
+                                `Erreur détectée: Shell attendu "usual-shell", mais trouvé "${detectedShell}"`
+                            ));
+                        }
                     }
-                } else if (credentials.siteSShVersion === "usual-shell") {
-                    // Ici on considère usual-shell = bash, sh, zsh etc.
-                    if (shellOutput.includes("ose-shell")) {
-                    conn.end();
-                    return reject(new Error(`Erreur détectée: Shell attendu "usual-shell", mais trouvé "${shellOutput}"`));
-                    }
-                }
 
-                conn.end();
-                resolve({ status: "connected", output: `Connexion réussie avec shell ${shellOutput}` });
+                    conn.end();
+                    resolve({ status: "connected", output: `Connexion réussie avec shell ${detectedShell}` });
                 });
             });
-            });
+
+            this.logger.log(`Connexion SSH réussie (${credentials.host}:${credentials.port || 22})`);
+        });
+
 
             conn.on("keyboard-interactive", (name, descr, lang, prompts, finish) => {
             return finish([credentials.password]);
@@ -70,12 +75,14 @@ export class SshService {
             let friendlyMessage: string;
             if (err.message.includes("ECONNREFUSED")) {
                 friendlyMessage = "Erreur détectée: Port invalide ou fermé";
-            } else if (err.message.includes("ETIMEDOUT")) {
+            } else if (err.message.includes("Timed out while waiting for handshake")) {
                 friendlyMessage = "Erreur détectée: Hôte injoignable (timeout)";
             } else if (err.message.includes("All configured authentication methods failed")) {
                 friendlyMessage = "Erreur détectée: Username / Password invalides";
             } else if (err.message.includes("ENOTFOUND")) {
                 friendlyMessage = "Erreur détectée: Hôte introuvable (DNS ou IP invalide)";
+            } else if (err.message.includes("Shell")) {
+                friendlyMessage = "Erreur détectée: Shell";
             } else {
                 friendlyMessage = `Erreur détectée: ${err.message}`;
             }

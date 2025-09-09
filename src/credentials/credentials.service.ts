@@ -160,12 +160,20 @@ export class CredentialsService implements NestMiddleware {
       Ip: string;
       sitePort: number;
       siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }>;
     stats: {
       total: number;
       successful: number;
       failed: number;
+      usernameMatches: number;
+      passwordMatches: number;
+      portMatches: number;
+      shellMatches: number;
     };
   }> {
     const allCredentials = await this.findAll();
@@ -176,11 +184,19 @@ export class CredentialsService implements NestMiddleware {
       Ip: string;
       sitePort: number;
       siteUsername: string;
+      usernameMatch: boolean;
+      passwordMatch: boolean;
+      portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }> = [];
 
     let successful = 0;
     let failed = 0;
+    let usernameMatches = 0;
+    let passwordMatches = 0;
+    let portMatches = 0;
+    let shellMatches = 0;
 
     const updatePromises: Promise<unknown>[] = [];
     const createHistoricPromises: Promise<unknown>[] = [];
@@ -195,8 +211,13 @@ export class CredentialsService implements NestMiddleware {
           siteSShVersion: credential.siteSShVersion,
         });
 
+        // Succès
         matches.push(credential);
         successful++;
+        usernameMatches++;
+        passwordMatches++;
+        portMatches++;
+        shellMatches++;
 
         updatePromises.push(
           this.update(credential.id, {
@@ -205,20 +226,37 @@ export class CredentialsService implements NestMiddleware {
             console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
           }),
         );
+
       } catch (error) {
-        let errorMessage = 'SSH connection failed';
+        let errorMessage = "SSH connection failed";
+        let isUsernameMatch = false;
+        let isPasswordMatch = false;
+        let isPortMatch = false;
+        let isShellMatch = false;
 
         if (error instanceof Error) {
           errorMessage = error.message;
 
-          if (error.message.includes('ECONNREFUSED')) {
-            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
-          } else if (error.message.includes('ETIMEDOUT')) {
-            errorMessage = 'Connection timed out (hôte non accessible)';
-          } else if (error.message.includes('All configured authentication methods failed')) {
-            errorMessage = 'Authentication failed (username ou password incorrect)';
-          } else if (error.message.includes('ENOTFOUND')) {
-            errorMessage = 'Host not found (DNS ou IP invalide)';
+          if (error.message.includes("Port invalide") || error.message.includes("ECONNREFUSED")) {
+            errorMessage = "Not valid Port: please change value";
+            isUsernameMatch = true;
+            isPasswordMatch = true;
+            isShellMatch = true;
+          } else if (error.message.includes("timeout") || error.message.includes("ETIMEDOUT")) {
+            errorMessage = "Connection timed out (hôte non accessible)";
+          } else if (error.message.includes("Username / Password invalides") || error.message.includes("Authentication failed")) {
+            errorMessage = "Authentication failed (username ou password incorrect)";
+            isPortMatch = true;
+            isShellMatch = true;
+          } else if (error.message.includes("Hôte introuvable") || error.message.includes("ENOTFOUND")) {
+            errorMessage = "Host not found (DNS ou IP invalide)";
+          } else if (error.message.includes('Erreur détectée: Shell')) {
+            errorMessage = 'Not valid Shell: please change value';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
+            isPortMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte injoignable (timeout)')) {
+            errorMessage = 'Error TIMEOUT: please check your network/connectivity ';
           }
         }
 
@@ -227,8 +265,13 @@ export class CredentialsService implements NestMiddleware {
           Ip: credential.Ip,
           sitePort: credential.sitePort,
           siteUsername: credential.siteUsername,
+          usernameMatch: isUsernameMatch,
+          passwordMatch: isPasswordMatch,
+          portMatch: isPortMatch,
+          shellMatch: isShellMatch,
           errorDescription: errorMessage,
         });
+
         failed++;
 
         createHistoricPromises.push(
@@ -237,7 +280,7 @@ export class CredentialsService implements NestMiddleware {
               siteId: credential.id,
               connectionErrorDate: new Date(),
               errorDescription: errorMessage,
-              errorStatus: 'unresolved',
+              errorStatus: "unresolved",
             })
             .catch(err => {
               console.error(`Erreur create historic siteId ${credential.id}`, err);
@@ -256,9 +299,14 @@ export class CredentialsService implements NestMiddleware {
         total: allCredentials.length,
         successful,
         failed,
+        usernameMatches,
+        passwordMatches,
+        portMatches,
+        shellMatches,
       },
     };
   }
+
 
   async verifyCredentialsListBySSH(credentialsList: Partial<CredentialDTO>[]): Promise<{
     matches: Credentials[];
@@ -270,6 +318,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }>;
     stats: {
@@ -277,6 +326,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatches: number;
       passwordMatches: number;
       portMatches: number;
+      shellMatches: number;
     };
   }> {
     const matches: Credentials[] = [];
@@ -288,12 +338,14 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }> = [];
 
     let usernameMatches = 0;
     let passwordMatches = 0;
     let portMatches = 0;
+    let shellMatches = 0;
 
     const updatePromises: Promise<unknown>[] = [];
     const createHistoricPromises: Promise<unknown>[] = [];
@@ -334,10 +386,12 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches++;
         passwordMatches++;
         portMatches++;
+        shellMatches++;
+
 
         updatePromises.push(
           this.update(credential.id, { lastDateChange: new Date()}).catch(err => {
-            console.error(`Erreur update lastDateChange siteId ${credential.id}`, err);
+            console.error(`Error on update lastDateChange siteId ${credential.id}`, err);
           })
         );
 
@@ -354,21 +408,29 @@ export class CredentialsService implements NestMiddleware {
         let isUsernameMatch = false;
         let isPasswordMatch = false;
         let isSitePortMatch = false;
+        let isShellMatch = false;
 
         if (error instanceof Error) {
           errorMessage = error.message;
 
-          if (error.message.includes('ECONNREFUSED')) {
-            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          if (error.message.includes('"Erreur détectée: Port invalide ou fermé"')) {
+            errorMessage = 'Not valid Port: please change value';
             isUsernameMatch = true;
             isPasswordMatch = true;
-          } else if (error.message.includes('ETIMEDOUT')) {
-            errorMessage = 'Connection timed out (hôte non accessible)';
-          } else if (error.message.includes('All configured authentication methods failed')) {
+            isShellMatch = true;
+          } else if (error.message.includes("Erreur détectée: Username / Password invalides")) {
             errorMessage = 'Authentication failed (username ou password incorrect)';
-            isSitePortMatch = true; 
-          } else if (error.message.includes('ENOTFOUND')) {
-            errorMessage = 'Host not found (DNS ou IP invalide)';
+            isSitePortMatch = true;
+            isShellMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte introuvable (DNS ou IP invalide)')) {
+            errorMessage = 'Host not found (DNS or invalid IP)';
+          } else if (error.message.includes('Erreur détectée: Shell')) {
+            errorMessage = 'Not valid Shell: please change value';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
+            isSitePortMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte injoignable (timeout)')) {
+            errorMessage = 'Error TIMEOUT: please check your network/connectivity ';
           }
         }
 
@@ -380,19 +442,9 @@ export class CredentialsService implements NestMiddleware {
           usernameMatch: isUsernameMatch,
           passwordMatch: isPasswordMatch,
           portMatch: isSitePortMatch,
+          shellMatch: isShellMatch,
           errorDescription: errorMessage,
         });
-
-        createHistoricPromises.push(
-          this.historicCredentialsService.create({
-            siteId: credential.id,
-            connectionErrorDate: new Date(),
-            errorDescription: errorMessage,
-            errorStatus: 'unresolved',
-          }).catch(err => {
-            console.error(`Erreur create historic siteId ${credential.id}`, err);
-          })
-        );
       }
     }
 
@@ -407,8 +459,10 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches,
         passwordMatches,
         portMatches,
+        shellMatches,
       },
     };
+
   }
 
   async verifyCredentialsDatabaseBySSH(credentialsList: Partial<CredentialDTO>[]): Promise<{
@@ -421,6 +475,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }>;
     stats: {
@@ -428,6 +483,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatches: number;
       passwordMatches: number;
       portMatches: number;
+      shellMatches: number;
     };
   }> {
     const matches: Credentials[] = [];
@@ -439,12 +495,14 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }> = [];
 
     let usernameMatches = 0;
     let passwordMatches = 0;
     let portMatches = 0;
+    let shellMatches = 0;
 
     const updatePromises: Promise<unknown>[] = [];
     const createHistoricPromises: Promise<unknown>[] = [];
@@ -476,6 +534,8 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches++;
         passwordMatches++;
         portMatches++;
+        shellMatches++;
+
 
         updatePromises.push(
           this.update(credential.id, { lastDateChange: new Date()}).catch(err => {
@@ -496,21 +556,29 @@ export class CredentialsService implements NestMiddleware {
         let isUsernameMatch = false;
         let isPasswordMatch = false;
         let isSitePortMatch = false;
+        let isShellMatch = false;
 
         if (error instanceof Error) {
           errorMessage = error.message;
 
-          if (error.message.includes('ECONNREFUSED')) {
-            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          if (error.message.includes('"Erreur détectée: Port invalide ou fermé"')) {
+            errorMessage = 'Not valid Port: please change value';
             isUsernameMatch = true;
             isPasswordMatch = true;
-          } else if (error.message.includes('ETIMEDOUT')) {
-            errorMessage = 'Connection timed out (hôte non accessible)';
-          } else if (error.message.includes('All configured authentication methods failed')) {
+            isShellMatch = true;
+          } else if (error.message.includes("Erreur détectée: Username / Password invalides")) {
             errorMessage = 'Authentication failed (username ou password incorrect)';
             isSitePortMatch = true;
-          } else if (error.message.includes('ENOTFOUND')) {
-            errorMessage = 'Host not found (DNS ou IP invalide)';
+            isShellMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte introuvable (DNS ou IP invalide)')) {
+            errorMessage = 'Host not found (DNS or invalid IP)';
+          } else if (error.message.includes('Erreur détectée: Shell')) {
+            errorMessage = 'Not valid Shell: please change value';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
+            isSitePortMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte injoignable (timeout)')) {
+            errorMessage = 'Error TIMEOUT: please check your network/connectivity ';
           }
         }
 
@@ -522,19 +590,9 @@ export class CredentialsService implements NestMiddleware {
           usernameMatch: isUsernameMatch,
           passwordMatch: isPasswordMatch,
           portMatch: isSitePortMatch,
+          shellMatch: isShellMatch,
           errorDescription: errorMessage,
         });
-
-        createHistoricPromises.push(
-          this.historicCredentialsService.create({
-            siteId: credential.id,
-            connectionErrorDate: new Date(),
-            errorDescription: errorMessage,
-            errorStatus: 'unresolved',
-          }).catch(err => {
-            console.error(`Erreur create historic siteId ${credential.id}`, err);
-          })
-        );
       }
     }
 
@@ -549,6 +607,7 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches,
         passwordMatches,
         portMatches,
+        shellMatches,
       },
     };
   }
@@ -563,6 +622,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }>;
     stats: {
@@ -570,6 +630,7 @@ export class CredentialsService implements NestMiddleware {
       usernameMatches: number;
       passwordMatches: number;
       portMatches: number;
+      shellMatches: number;
     };
   }> {
     const matches: Credentials[] = [];
@@ -581,12 +642,14 @@ export class CredentialsService implements NestMiddleware {
       usernameMatch: boolean;
       passwordMatch: boolean;
       portMatch: boolean;
+      shellMatch: boolean;
       errorDescription: string;
     }> = [];
 
     let usernameMatches = 0;
     let passwordMatches = 0;
     let portMatches = 0;
+    let shellMatches = 0;
 
     const updatePromises: Promise<unknown>[] = [];
     const createHistoricPromises: Promise<unknown>[] = [];
@@ -619,27 +682,36 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches++;
         passwordMatches++;
         portMatches++;
+        shellMatches++;
 
       } catch (error) {
         let errorMessage = 'SSH connection failed';
         let isUsernameMatch = false;
         let isPasswordMatch = false;
         let isSitePortMatch = false;
+        let isShellMatch = false;
 
         if (error instanceof Error) {
           errorMessage = error.message;
 
-          if (error.message.includes('ECONNREFUSED')) {
-            errorMessage = 'Connection refused (port fermé ou hôte injoignable)';
+          if (error.message.includes('"Erreur détectée: Port invalide ou fermé"')) {
+            errorMessage = 'Not valid Port: please change value';
             isUsernameMatch = true;
             isPasswordMatch = true;
-          } else if (error.message.includes('ETIMEDOUT')) {
-            errorMessage = 'Connection timed out (hôte non accessible)';
-          } else if (error.message.includes('All configured authentication methods failed')) {
+            isShellMatch = true;
+          } else if (error.message.includes("Erreur détectée: Username / Password invalides")) {
             errorMessage = 'Authentication failed (username ou password incorrect)';
-            isSitePortMatch = true; // port ok mais login/pass KO
-          } else if (error.message.includes('ENOTFOUND')) {
-            errorMessage = 'Host not found (DNS ou IP invalide)';
+            isSitePortMatch = true;
+            isShellMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte introuvable (DNS ou IP invalide)')) {
+            errorMessage = 'Host not found (DNS or invalid IP)';
+          } else if (error.message.includes('Erreur détectée: Shell')) {
+            errorMessage = 'Not valid Shell: please change value';
+            isUsernameMatch = true;
+            isPasswordMatch = true;
+            isSitePortMatch = true;
+          } else if (error.message.includes('Erreur détectée: Hôte injoignable (timeout)')) {
+            errorMessage = 'Error TIMEOUT: please check your network/connectivity ';
           }
         }
 
@@ -651,6 +723,7 @@ export class CredentialsService implements NestMiddleware {
           usernameMatch: isUsernameMatch,
           passwordMatch: isPasswordMatch,
           portMatch: isSitePortMatch,
+          shellMatch: isShellMatch,
           errorDescription: errorMessage,
         });
       }
@@ -667,6 +740,7 @@ export class CredentialsService implements NestMiddleware {
         usernameMatches,
         passwordMatches,
         portMatches,
+        shellMatches,
       },
     };
   }
