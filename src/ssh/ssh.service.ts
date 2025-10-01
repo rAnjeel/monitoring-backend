@@ -72,24 +72,28 @@ export class SshService {
             });
 
             conn.on("error", (err) => {
-            let friendlyMessage: string;
-            if (err.message.includes("ECONNREFUSED")) {
-                friendlyMessage = "Erreur détectée: Port invalide ou fermé";
-            } else if (err.message.includes("Timed out while waiting for handshake")) {
-                friendlyMessage = "Erreur détectée: Hôte injoignable (timeout)";
-            } else if (err.message.includes("All configured authentication methods failed")) {
-                friendlyMessage = "Erreur détectée: Username / Password invalides";
-            } else if (err.message.includes("ENOTFOUND")) {
-                friendlyMessage = "Erreur détectée: Hôte introuvable (DNS ou IP invalide)";
-            } else if (err.message.includes("Shell")) {
-                friendlyMessage = "Erreur détectée: Shell";
-            } else {
-                friendlyMessage = `Erreur détectée: ${err.message}`;
-            }
-            this.logger.error(friendlyMessage);
-            conn.end();
-            reject(new Error(friendlyMessage));
+                let friendlyMessage: string;
+                const hostPort = `${credentials.host}:${credentials.port || 22}`;
+
+                if (err.message.includes("ECONNREFUSED")) {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : Port invalide ou fermé`;
+                } else if (err.message.includes("Timed out while waiting for handshake")) {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : Hôte injoignable (timeout)`;
+                } else if (err.message.includes("All configured authentication methods failed")) {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : Authentication failed - Username "${credentials.username}", Password "${credentials.password}" incorrect`;
+                } else if (err.message.includes("ENOTFOUND")) {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : Hôte introuvable (DNS ou IP invalide)`;
+                } else if (err.message.includes("Shell")) {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : Shell invalide`;
+                } else {
+                    friendlyMessage = `Erreur détectée sur ${hostPort} : ${err.message}`;
+                }
+
+                this.logger.error(friendlyMessage);
+                conn.end();
+                reject(new Error(friendlyMessage));
             });
+
 
             const connectionConfig = {
             host: credentials.host.trim(),
