@@ -369,9 +369,7 @@ export class CredentialsService implements NestMiddleware {
         });
       }
       
-      console.log('Vérification du credential:', {
-        password: dto.sitePassword || credential.sitePassword
-      });
+      console.log('Vérification du credential:', dto);
       try {
         await this.sshService.testConnection({
           host: dto.Ip || credential.Ip,
